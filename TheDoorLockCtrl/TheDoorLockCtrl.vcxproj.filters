@@ -18,8 +18,28 @@
     <None Include="TheDoorLockCtrl.ino" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BitBool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OnewireKeypad.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Password.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PinCode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="__vm\.TheDoorLockCtrl.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Password.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PinCode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
