@@ -41,6 +41,11 @@ Hur systemet används:
 
 
 */
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "arduino.h"
+#else
+#include "WProgram.h"
+#endif
 
 #include "PinCode.h"
 #include "OnewireKeypad.h" //For info: http://playground.arduino.cc/Code/OneWireKeyPad
@@ -49,14 +54,14 @@ Hur systemet används:
 
 PinCode lockAccessPin = PinCode("1234"); //Provide pincode for door access
 
-#define userInputRetriesAllowed = 3 //How many times the user may enter wrong pin bef alarmt trigger.
+#define userInputRetriesAllowed 3 //How many times the user may enter wrong pin bef alarmt trigger.
 
-#define pauseForNextKeyPress = 500; //
+#define pauseForNextKeyPress 500 //
 
-#define userInputResetDelay = 30000 //How long any input session from keypad will stored in millis
-#define doorAccessEnabledPeriod = 15000//How long the user is abled to open door millis.
+#define userInputResetDelay 30000 //How long any input session from keypad will stored in millis
+#define doorAccessEnabledPeriod 15000//How long the user is abled to open door millis.
 
-#define alarmTriggeredPeriod = 60000//How long will the alarm output stay triggered millis.
+#define alarmTriggeredPeriod 60000//How long will the alarm output stay triggered millis.
 
 
 //**Pin configuration on the arduino
@@ -72,8 +77,12 @@ PinCode lockAccessPin = PinCode("1234"); //Provide pincode for door access
 //** Keypad hardware setup and layout Settings
 #define keypadRows 4
 #define keypadCols 3
-#define keypadRow_Res 4700
-#define keypadCol_Res 1000
+//#define keypadRow_Res 4700
+//#define keypadCol_Res 1000
+
+#define keypadRow_Res 2400 //for 3.3v		
+#define keypadCol_Res 680 //for 3.3v
+
 #define Precision ExtremePrec 
 
 char keyPadKEYS[] = {
@@ -95,6 +104,11 @@ char timeLastKeyPress = 0;
 //char lastPinInput;
 String pincodeInput = ""; //Stores input from keyPad by user.
 
+long userInputreset = userInputResetDelay;
+long userInputTimer = 0;
+
+
+
 
 
 
@@ -103,6 +117,10 @@ String pincodeInput = ""; //Stores input from keyPad by user.
 void setup() {
 	
 	Serial.begin(9600); //For debugging output.
+
+	//for debugging without keypad only.
+	pinMode(13, OUTPUT);
+	digitalWrite(13, LOW);
 
 	//Set the pin modes and start values
 	pinMode(ALARM_PIN, OUTPUT);
@@ -118,35 +136,34 @@ void setup() {
 	//To prevent detection of false keypress on start up
 	KeyPad.Getkey();
 
-	//Clear session and provide serial info
-	resetSession();
 
 	Serial.println("End of setup.");
-
+	
+	resetUserInput(); //Clear all and provide serial output instructions.
 
 }
 
 // the loop function runs over and over again until power down or reset
 void loop() {
-	
+	char userInput = false;
+	//Check if user input should be reset
+	if ((userInputTimer + userInputResetDelay) < millis() )
+	{
+
+		//Clear session and provide serial info
+		resetUserInput();
+	}
+
 	char keyPressed = false;
-	char userInput; //Store val from keypad input
+
 	
 	//Check for keypad input if a key is pressed on key pad
 	byte KpState = KeyPad.Key_State();
 
 	if (KpState == PRESSED)
 	{
-		if (keyPressed = KeyPad.Getkey())
-		{
-			Serial << "Pressed: " << keyPressed << "\n";
-			switch (keyPressed)
-			{
-			case '*': lockAccessPin.reset(); break;
-			case '#': lockAccessPin.checkPin(); break;
-			default: lockAccessPin.addInput(keyPressed);
-			}
-		}
+		userInput = KeyPad.Getkey();
+			Serial << "Pressed Key: " << userInput << "\n";
 	}
 
 	//Check serial for user input
@@ -164,14 +181,29 @@ void loop() {
 
 	}
 
-	else if (KpState == HELD)
-	{
-		Serial << "Key:" << KeyPad.Getkey() << " being held\n";
-	}
-	else if (KpState == RELEASED)
-	{
-		Serial << "Key Released\n";
-	}
+	    //Check if and what ben provided from user
+		switch (userInput)
+		{
+		case '*': lockAccessPin.reset(); break;
+		case '#': lockAccessPin.checkPin(); break;
+		default: lockAccessPin.addInput(keyPressed);
+		}
+	//else if (KpState == HELD)
+	//{
+	//	Serial << "Key:" << KeyPad.Getkey() << " being held\n";
+	//}
+	//else if (KpState == RELEASED)
+	//{
+	//	Serial << "Key Released\n";
+	//}
+	//else if (KpState == NO_KEY)
+	//{
+	//	Serial << "NO_KEY\n";
+	//}
+	//else if (KpState == WAITING)
+	//{
+	//	Serial << "Waiting\n";
+	//}
 }
 
 //Called when user sends commit command and evaluates pin code and
@@ -218,7 +250,7 @@ void beginAlarm()
 }
 
 //Used for resetting current user input session
-void resetSession()
+void resetUserInput()
 {
 	Serial << "Keypad input session is Reset.\n";
 	LastkeyPressedTime = 0; //last input from user if not reseted..
@@ -227,6 +259,8 @@ void resetSession()
 
 	lastKpState = WAITING;
 	timeLastKeyPress = 0;
+
+	userInputTimer = millis();
 
 	
 
