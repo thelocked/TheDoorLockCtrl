@@ -49,7 +49,7 @@ Hur systemet används:
 //#else
 //#include "WProgram.h"
 //#endif
-
+ 
 
 
 #include "PinCode.h"
@@ -58,9 +58,9 @@ Hur systemet används:
 //***Global Const and properties
 
 #define PINCODE "1234"
-
-
-#define maxIncorrecInputs 3 //How many times the user may enter wrong pin bef alarm trigger.
+#define USERINPUT_COMMIT_KEY '#'
+#define USERINPUT_RESET_KEY '*'
+#define failedAttemptsTriggerAlarm 3 //How many times the user may enter wrong pin bef alarm trigger.
 
 
 
@@ -75,13 +75,13 @@ Hur systemet används:
 //**Pin configuration on the arduino
 
 #define KEYPAD_PIN A0 //Pin input used for reading input from the keyboard hardware.
-#define LED_OK_PIN 5 //Pin output used for display feedback to user. For door accsess granted and i key is pressed.
-#define LED_ERR_PIN 6 //Pin out put used to inform user of wrong pin entered, alarm is triggerd and input reseted.
-#define DOOR_ACCESS_PIN 7 //Pin output used to enable the lock to stop blocking door access.
+#define STATUS_LED_PIN 13 //Pin output used for display feedback to user. For door accsess granted and i key is pressed.
+
+#define DOOR_LOCK_PIN 7 //Pin output used to enable the lock to stop blocking door access.
 #define ALARM_PIN 8 //Pin output for triggering alarm.
 
 
-PinCode lockAccessPin = PinCode(PINCODE,maxIncorrecInputs,userInputResetDelay); //Provide pincode for door access
+PinCode lockAccessPin = PinCode(PINCODE,failedAttemptsTriggerAlarm,userInputResetDelay); //Provide pincode for door access
 
 //** Keypad hardware setup and layout Settings
 #define keypadRows 4
@@ -105,8 +105,9 @@ char keyPadKEYS[] = {
 OnewireKeypad <Print, 12> KeyPad(Serial, keyPadKEYS, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
 
 long LastkeyPressedTime = 0; //last input from user if not reseted..
-long doorLockOpenTime = 0; //is access or when was the lock opened.
-long alarmTriggerTime = 0; //is or when was the alarm triggerd.
+//long doorLockOpenTime = 0; //is access or when was the lock opened.
+//long alarmTriggerTime = 0; //is or when was the alarm triggerd.
+long lockAlarmResetTimer = 0;//Start time for lock or alarm output enabed.
 
 byte lastKpState = WAITING;
 char timeLastKeyPress = 0;
@@ -116,7 +117,7 @@ String pincodeInput = ""; //Stores input from keyPad by user.
 long userInputreset = userInputResetDelay;
 long inputSessionResetTime = 0; //After how long time all input and retries will be reseted.
 
-
+byte userIncorrectCount = 0;
 long keypadReleasedTimer = 0;
 
 
@@ -133,14 +134,13 @@ void setup() {
 
 	//Set the pin modes and start values
 	pinMode(ALARM_PIN, OUTPUT);
-	pinMode(LED_ERR_PIN, OUTPUT);
-	pinMode(DOOR_ACCESS_PIN, OUTPUT);
-	pinMode(LED_OK_PIN, OUTPUT);
+	pinMode(DOOR_LOCK_PIN, OUTPUT);
+	pinMode(STATUS_LED_PIN, OUTPUT);
 
 	digitalWrite(ALARM_PIN, LOW); //No alarm triggers;
-	digitalWrite(DOOR_ACCESS_PIN, LOW); //Doorlock is closed;
-	digitalWrite(LED_OK_PIN, LOW); //Led inditation off.
-	digitalWrite(LED_ERR_PIN, LOW); //Led off
+	digitalWrite(DOOR_LOCK_PIN, LOW); //Doorlock is closed;
+	digitalWrite(STATUS_LED_PIN, LOW); //Led inditation off.
+
 
 	//To prevent detection of false keypress on start up
 	//KeyPad.Getkey();
@@ -157,8 +157,8 @@ void loop() {
 	char userInput = 0;
 	
 
-	//Check if any userinput is provided or input session should be reset
-	//OBS Does nothing to alarm or door outputs.
+	/*Check if any userinput is provided or input session should be reset
+	NOTE: Does nothing to alarm or door outputs.*/
 	if (checkUserSessionResetTimer())
 	{
 		//Reset timer has triggerd new user session
@@ -167,7 +167,7 @@ void loop() {
 		Serial << "\nEnable door access by enter correct pin code and confirm with <ENTER>\n";
 	}
 
-	//Check keypad input states and read input.
+	/*Begin Keypad Checked for input states and read input.*/
 	byte kpState = KeyPad.Key_State();
 
 	//Checks if keypad state has changed or not compared to last detected state
@@ -200,48 +200,50 @@ void loop() {
 	}
 
 
-	
+	/*End of keypad check*/
 
 
-	//Check serial for user input
+	/*Check serial for user input
+	This enables input from serial connection for test and debug
+	Note this can be commented out or removed*/
 	char serialInput;
-	if (Serial.available() > 0)
+	if (!Serial.available() >= 0)
 	{
 		userInput = Serial.read();//get one char from serial.
 		Serial << "Serial input found: " << userInput<< "\n";
 		Serial.println(userInput, DEC);
-	Serial.r
+	
 
 	}
-		//switch (serialRead)
-		//	case '*': lockAccessPin.resetAddedInput(); break;
-		//	case '\n': lockAccessPin.checkPin(); break;
-		//	default: lockAccessPin.addInput(userInput);
 
-	    //Check if and what ben provided from user
-		//switch (userInput)
-		//{
-		//case '*': lockAccessPin.resetAddedInput(); break;
-		//case '#': lockAccessPin.checkPin(); break;
-		//default: lockAccessPin.addInput(keyPressed);
-		//}
-	//else if (KpState == HELD)
-	//{
-	//	Serial << "Key:" << KeyPad.Getkey() << " being held\n";
-	//}
-	//else if (KpState == RELEASED)
-	//{
-	//	Serial << "Key Released\n";
-	//}
-	//else if (KpState == NO_KEY)
-	//{
-	//	Serial << "NO_KEY\n";
-	//}
-	//else if (KpState == WAITING)
-	//{
-	//	Serial << "Waiting\n";
-	//}
+	/*End of serial input check*/
+
+	//Verify if any new user input have been provided
+
+	if (userInput > 0)
+	{
+	    //New input found provided from user
+		switch (userInput)
+		{
+		//User whants to reset current pin sequnce.Note Not the number of faild attemts
+		case USERINPUT_RESET_KEY: lockAccessPin.resetAddedInput(); 
+			//Output to serial com window
+			Serial << "Current pin sequence Reset";
+			break; 
+		//User whants to commit current key sequence and it vill be verifed
+		case USERINPUT_COMMIT_KEY: userInputCommit(); break;
+		//Input provider by user is added to pincode sequence
+		default: byte currentPinLeght = lockAccessPin.addInput(userInput);
+			//Prints to serial to indikate pin sequence lenght, 
+			Serial << "Current user pin: ";
+			Serial.println(3, '*');
+		}
+
+	}
+
+	void checkLockAlarmResetTimer();
 }
+
 
 
 
@@ -256,38 +258,37 @@ void userInputCommit()
 	if (pinCheckStatus == SUCCSESS)
 	{
 		//User have provided correct pin code and lock will be disabled
-		openDoorLock();
+		digitalWrite(DOOR_LOCK_PIN, HIGH);//Enables door accesss by disable lock by turning output high
+		digitalWrite(ALARM_PIN, LOW);//Disable alarm if its enabled.NOTE User is able to deactivate alarm with correct pin.
+		digitalWrite(STATUS_LED_PIN,HIGH);//Turn status led on when lock is disabled.
+			lockAlarmResetTimer = millis() + doorAccessEnabledPeriod;//Set reset time for output enable period
+			Serial << "Door lock is disabled/n";
 	}
 	else if (pinCheckStatus == FAIL)
 	{
 		//User have entered incorrect pin code
+		//Check how many incorrect attempts
+		if (userIncorrectCount < failedAttemptsTriggerAlarm)
+		{
+			//The user have not reached max failed attempts
+			userIncorrectCount++; //Increment failed attemts counter
+		}
+		else
+		{
+			//User have provided to many incorrect pin code and alarm device will be enabled
+			digitalWrite(ALARM_PIN, HIGH);//Enables Alarm device by turning output high
+			//statusLedEnable(true);//Turn status led on.
+			lockAlarmResetTimer = millis() + doorAccessEnabledPeriod;//Set reset time for output enable period
+			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
+			Serial << "Alarm is activated/n";			//User has provided to many failed attempts
+			
+
+		}
 	}
 
-	switch (pinCheckStatus)
-	{
-	case SUCCSESS: openDoorLock(); break;
-	default:
-		break;
-	}
 
 }
 
-void openDoorLock()
-{
-	Serial << "Door lock will be disabled";
-}
-
-//User have provided an incorrect pin code.
-void incorrectPinCode()
-{
-	//Check if user have made to many retries
-
-}
-
-void beginAlarm()
-{
-	Serial << "Alarm is trigged!!";
-}
 
 
 
@@ -298,9 +299,29 @@ bool checkUserSessionResetTimer()
 	if (inputSessionResetTime < millis())
 	{
 		//Last Session Time is passed and system will reset all input.
-		lockAccessPin.resetAll();
-		inputSessionResetTime = userInputResetDelay + millis();
+		lockAccessPin.resetAll();//Resets all input from last session
+		userIncorrectCount = 0;//Resets counter for previus faled input attemps
+		inputSessionResetTime = userInputResetDelay + millis();//Set start time for new session
 
+		return true;
+	}
+	else
+	{
+		//Current session is still valid and no reset
+		return false;
+	}
+}
+
+//Checks time if the current lock and alarm output pins should be disabled
+//NOTE this is used for both alarm and lock pins
+bool checkLockAlarmResetTimer()
+{
+	if (lockAlarmResetTimer < millis())
+	{
+		//Last Session Time is passed and system lock and alarm output pins.
+		digitalWrite(DOOR_LOCK_PIN, LOW); //Disables door access
+		digitalWrite(ALARM_PIN, LOW);//Disables alarm
+		digitalWrite(STATUS_LED_PIN,LOW);//Disables status led
 		return true;
 	}
 	else
@@ -312,17 +333,53 @@ bool checkUserSessionResetTimer()
 
 
 //Used for resetting current user input session
-void resetUserInput()
-{
-	LastkeyPressedTime = 0; //last input from user if not reseted..
-	doorLockOpenTime = 0; //is access or when was the lock opened.
-	alarmTriggerTime = 0; //is or when was the alarm trigged.
+//void resetUserInput()
+//{
+//	LastkeyPressedTime = 0; //last input from user if not reseted..
+//	doorLockOpenTime = 0; //is access or when was the lock opened.
+//	alarmTriggerTime = 0; //is or when was the alarm trigged.
+//
+//
+//	inputSessionResetTime = inputSessionResetTime + millis();
+//
+//	
+//
+//
+//
+//}
 
-
-	inputSessionResetTime = inputSessionResetTime + millis();
-
-	
-
-
-
-}
+//Set output High/Low for status led pin
+//void statusLedEnable(bool ledOn)
+//{
+//	if (statusLedEnable)
+//	{
+//		digitalWrite(STATUS_LED_PIN, HIGH); //Led on.
+//
+//	}
+//	else
+//	{
+//		digitalWrite(STATUS_LED_PIN, LOW); //Led off.
+//	}
+//}
+//void openDoorLock()
+//{
+//	Serial << "Door lock will be disabled";
+//}
+//
+////User have provided an incorrect pin code.
+//void incorrectPinCode()
+//{
+//	//Check if user have made to many retries
+//
+//}
+//
+//void beginAlarm()
+//{
+//	Serial << "Alarm is trigged!!";
+//}
+	/*switch (pinCheckStatus)
+	{
+	case SUCCSESS: openDoorLock(); break;
+	default:
+		break;
+	}*/

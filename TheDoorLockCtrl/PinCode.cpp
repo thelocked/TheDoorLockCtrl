@@ -13,18 +13,18 @@ PinCode::PinCode(char * pincode,
 	correctPin = pincode;
 }
 
-//Append char to user input sequence
-bool PinCode::addInput(char addInput)
+//Append char to user input sequence and returns the lenght of the curren pin sequence
+byte PinCode::addInput(char addInput)
 {
 	//Ignore adding if user input is larger then pincode
 	if (userInput.length() < correctPin.length())
 	{
 		//Current input is not larger
 		userInput = userInput + addInput;
-		return true;
+		//return true;
 	}
 	//User input not appended
-	return false;
+	return userInput.length();
 }
 
 void PinCode::resetAddedInput()
