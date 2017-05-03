@@ -11,23 +11,39 @@
 
 #define SUCCSESS 1
 #define FAIL 0
-#define IGNORED 2 
-
+#define TO_MANY_FAIL -1
+#define IGNORED_ATTEMPT 2
+/*
+Used for user input, verification against the correct pin,
+counting number of incorrect inputs and if to many return that.
+User input starts session timer and if nothing is registered after 
+that delay all of the current inputs are reseted recorded values and
+num of retries
+*/
 class PinCode
 {
 
  public:
-	 PinCode(char* pincode);
+	 PinCode(char* pincode, //The Correct pin
+		 int numOfRetrties,
+		 long inputResetDelay);
+
 	 bool addInput(char addInput);
-	 void reset();
 	 int checkPin();
 
-
+	 void resetAddedInput();
+	 void resetAll();
+	 
 
 	 
 private:
 	String userInput;
 	String correctPin;
+
+	long inputSessionStart;
+
+
+
 };
 
 

@@ -54,17 +54,20 @@ Hur systemet används:
 
 //***Global Const and properties
 
-PinCode lockAccessPin = PinCode("1234"); //Provide pincode for door access
+#define PINCODE "1234"
 
-#define userInputRetriesAllowed 3 //How many times the user may enter wrong pin bef alarmt trigger.
 
-#define pauseForNextKeyPress 500 //
+#define maxIncorrecInputs 3 //How many times the user may enter wrong pin bef alarm trigger.
+
+
 
 #define userInputResetDelay 30000 //How long any input session from keypad will stored in millis
 #define doorAccessEnabledPeriod 15000//How long the user is abled to open door millis.
 
 #define alarmTriggeredPeriod 60000//How long will the alarm output stay triggered millis.
 
+//How long the keypad has to be released between key presses. To not record stuck buttons or interference on input pin.
+#define pauseForNextKeyPress 500 
 
 //**Pin configuration on the arduino
 
@@ -75,15 +78,16 @@ PinCode lockAccessPin = PinCode("1234"); //Provide pincode for door access
 #define ALARM_PIN 8 //Pin output for triggering alarm.
 
 
+PinCode lockAccessPin = PinCode(PINCODE,maxIncorrecInputs,userInputResetDelay); //Provide pincode for door access
 
 //** Keypad hardware setup and layout Settings
 #define keypadRows 4
 #define keypadCols 3
-//#define keypadRow_Res 4700
-//#define keypadCol_Res 1000
+//#define keypadRow_Res 4700 //for 5.0V
+//#define keypadCol_Res 1000 //for 5.0V
 
-#define keypadRow_Res 2400 //for 3.3v		
-#define keypadCol_Res 680 //for 3.3v
+#define keypadRow_Res 2400 //for 3.3V		
+#define keypadCol_Res 680 //for 3.3V
 
 #define Precision ExtremePrec 
 
@@ -107,7 +111,7 @@ char timeLastKeyPress = 0;
 String pincodeInput = ""; //Stores input from keyPad by user.
 
 long userInputreset = userInputResetDelay;
-long userInputTimer = 0;
+long inputSessionResetTime = 0; //After how long time all input and retries will be reseted.
 
 
 
@@ -148,13 +152,18 @@ void setup() {
 // the loop function runs over and over again until power down or reset
 void loop() {
 	char userInput = false;
-	//Check if user input should be reset
-	if ((userInputTimer + userInputResetDelay) < millis() )
-	{
+	
 
-		//Clear session and provide serial info
-		resetUserInput();
+	//Check if any userinput is provided or input session should be reset
+	//OBS Does nothing to alarm or door outputs.
+	if (checkUserSessionResetTimer())
+	{
+		//Reset timer has triggerd new user session
+		Serial << "Keypad input session is Reset.\n";
+		//Print instructions to serial window
+		Serial << "\nEnable door access by enter correct pin code and confirm with <ENTER>\n";
 	}
+
 
 	char keyPressed = false;
 
@@ -176,7 +185,7 @@ void loop() {
 		Serial << "Serial input found: " << serialRead << "\n";
 		switch (serialRead)
 		{
-			case '*': lockAccessPin.reset(); break;
+			case '*': lockAccessPin.resetAddedInput(); break;
 			case '\n': lockAccessPin.checkPin(); break;
 			default: lockAccessPin.addInput(keyPressed);
 		}
@@ -186,7 +195,7 @@ void loop() {
 	    //Check if and what ben provided from user
 		switch (userInput)
 		{
-		case '*': lockAccessPin.reset(); break;
+		case '*': lockAccessPin.resetAddedInput(); break;
 		case '#': lockAccessPin.checkPin(); break;
 		default: lockAccessPin.addInput(keyPressed);
 		}
@@ -251,23 +260,38 @@ void beginAlarm()
 	Serial << "Alarm is trigged!!";
 }
 
+//Checks time if all user input and incorrect attempts will be reseted and
+//makes system ready for another user.
+bool checkUserSessionResetTimer()
+{
+	if (inputSessionResetTime < millis())
+	{
+		//Last Session Time is passed and system will reset all input.
+		lockAccessPin.resetAll();
+		inputSessionResetTime = userInputResetDelay + millis();
+
+		return true;
+	}
+	else
+	{
+		//Current session is still valid and no reset
+		return false;
+	}
+}
+
+
 //Used for resetting current user input session
 void resetUserInput()
 {
-	Serial << "Keypad input session is Reset.\n";
 	LastkeyPressedTime = 0; //last input from user if not reseted..
 	doorLockOpenTime = 0; //is access or when was the lock opened.
 	alarmTriggerTime = 0; //is or when was the alarm trigged.
 
-	lastKpState = WAITING;
-	timeLastKeyPress = 0;
 
-	userInputTimer = millis();
+	inputSessionResetTime = millis();
 
 	
 
 
 
-	//Print instructions to serial window
-	Serial << "\nEnable door access by enter correct pin code and confirm with <ENTER>\n";
 }

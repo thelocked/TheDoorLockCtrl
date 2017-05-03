@@ -53,7 +53,7 @@ public:
 	void set(char* pass);
 	bool is(char* pass);
 	bool append(char character);
-	void reset();
+	void resetAddedInput();
 	bool evaluate();
 	
 	//char* getPassword();

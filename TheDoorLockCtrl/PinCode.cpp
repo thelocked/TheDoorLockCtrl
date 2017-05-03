@@ -4,7 +4,11 @@
 
 #include "PinCode.h"
 
-PinCode::PinCode(char* pincode)
+
+
+PinCode::PinCode(char * pincode,
+	int numOfRetrties = 0, //Default unlimited retries
+	long inputResetDelay = 0) //Default session never resets
 {
 	correctPin = pincode;
 }
@@ -23,10 +27,15 @@ bool PinCode::addInput(char addInput)
 	return false;
 }
 
-void PinCode::reset()
+void PinCode::resetAddedInput()
 {
 	userInput = "";
 }
+
+void PinCode::resetAll()
+{}
+
+
 
 //Evaluates if the user input is equal to pincode and returns info
 //if correct or incorrect action should be trigged or ignored

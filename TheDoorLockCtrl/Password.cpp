@@ -35,7 +35,7 @@
 //construct object in memory, set all variables
 Password::Password(char* pass){
 	set( pass );
-	reset();
+	resetAddedInput();
 }
 
 //set the password
@@ -65,7 +65,7 @@ bool Password::append(char character){
 }
 
 //reset the guessed password, one can guess again
-void Password::reset(){ 
+void Password::resetAddedInput(){ 
 	currentIndex = 0;
 	guess[currentIndex] = STRING_TERMINATOR;
 }
