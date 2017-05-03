@@ -88,12 +88,10 @@
   <ItemGroup>
     <ClInclude Include="BitBool.h" />
     <ClInclude Include="OnewireKeypad.h" />
-    <ClInclude Include="Password.h" />
     <ClInclude Include="PinCode.h" />
     <ClInclude Include="__vm\.TheDoorLockCtrl.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Password.cpp" />
     <ClCompile Include="PinCode.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
