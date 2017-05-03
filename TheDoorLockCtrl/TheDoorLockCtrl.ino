@@ -39,9 +39,6 @@ Hur systemet används:
 
 */
 
-	#if _VM_DEBUG
-	#pragma GCC optimize ("O0")
-	#endif
 
 
 //#if defined(ARDUINO) && ARDUINO >= 100
@@ -94,15 +91,19 @@ PinCode lockAccessPin = PinCode(PINCODE,failedAttemptsTriggerAlarm,userInputRese
 
 #define Precision ExtremePrec 
 
-char keyPadKEYS[] = {
+
+char keyPadKeysLayout[] = {
 	'1','2','3',
 	'4','5','6',
 	'7','8','9',
 	'*','0','#'
 };
 
+String keyPadKEYS = keyPadKeysLayout; //Keypad layout converted to string for later use
+
+String keyPadKeysAsString = keyPadKEYS;
 //Object that gets input from keypad
-OnewireKeypad <Print, 12> KeyPad(Serial, keyPadKEYS, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
+OnewireKeypad <Print, 12> KeyPad(Serial, keyPadKeysLayout, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
 
 long LastkeyPressedTime = 0; //last input from user if not reseted..
 //long doorLockOpenTime = 0; //is access or when was the lock opened.
@@ -145,6 +146,7 @@ void setup() {
 	//To prevent detection of false keypress on start up
 	//KeyPad.Getkey();
 
+	Serial.flush(); //Remove any crap
 
 	Serial.println("End of setup.");
 	
@@ -154,7 +156,10 @@ void setup() {
 
 // the loop function runs over and over again until power down or reset
 void loop() {
-	char userInput = 0;
+	#if _VM_DEBUG
+	#pragma GCC optimize ("O0")
+	#endif
+	char userInput = 0; //Stores value read from userinput
 	
 
 	/*Check if any userinput is provided or input session should be reset
@@ -207,11 +212,28 @@ void loop() {
 	This enables input from serial connection for test and debug
 	Note this can be commented out or removed*/
 	char serialInput;
-	if (!Serial.available() >= 0)
+	if (Serial.available() > 0)
 	{
 		userInput = Serial.read();//get one char from serial.
+		//Check if value matches anything compared to chars provided by keypad
+		//Note this is needed to filter out junk and bogus values from serial input
+		int ifFoundIndexNo = keyPadKEYS.indexOf(userInput); //Search for chars that if found in keypad layout.
+		//if (!keyPadKEYS.indexOf(userInput))
+		if (ifFoundIndexNo < 0)
+		{
+			//No match found reset value back to nothing
+			userInput = 0;
+			Serial << "Serial input not matched and ignored\n";
+		}
+		else
+		{
+			//userInput match with kaypad is found
 		Serial << "Serial input found: " << userInput<< "\n";
 		Serial.println(userInput, DEC);
+		}
+
+
+		
 	
 
 	}
@@ -232,11 +254,21 @@ void loop() {
 			break; 
 		//User whants to commit current key sequence and it vill be verifed
 		case USERINPUT_COMMIT_KEY: userInputCommit(); break;
-		//Input provider by user is added to pincode sequence
-		default: byte currentPinLeght = lockAccessPin.addInput(userInput);
+		//Input provider by user is added to pincode sequence and result of it all is returned
+		default: String allUserInput = lockAccessPin.addInput(userInput);
 			//Prints to serial to indikate pin sequence lenght, 
+
+			//Of course do we have to discuse it before printing it out
+			//Note: Uneccesary functionality just implemented for "Show off :)"
+			String allUserInputDisquised;
+			for (byte i = 0; i < allUserInput.length(); i++)
+			{
+				//Not a great way to Fill with '*' for each char, but who cares
+				allUserInputDisquised += "*";
+			}
+
 			Serial << "Current user pin: ";
-			Serial.println(3, '*');
+			Serial.println(allUserInputDisquised);
 		}
 
 	}

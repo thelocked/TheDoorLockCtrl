@@ -28,7 +28,7 @@ class PinCode
 		 int numOfRetrties,
 		 long inputResetDelay);
 
-	 byte addInput(char addInput);
+	 String addInput(char addInput);
 	 int checkPin();
 
 	 void resetAddedInput();
