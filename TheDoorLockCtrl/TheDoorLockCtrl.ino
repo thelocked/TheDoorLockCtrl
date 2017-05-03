@@ -210,21 +210,21 @@ void loop() {
 		userInput = Serial.read();//get one char from serial.
 		Serial << "Serial input found: " << userInput<< "\n";
 		Serial.println(userInput, DEC);
-	
+	Serial.r
 
 	}
-		switch (serialRead)
-			case '*': lockAccessPin.resetAddedInput(); break;
-			case '\n': lockAccessPin.checkPin(); break;
-			default: lockAccessPin.addInput(userInput);
+		//switch (serialRead)
+		//	case '*': lockAccessPin.resetAddedInput(); break;
+		//	case '\n': lockAccessPin.checkPin(); break;
+		//	default: lockAccessPin.addInput(userInput);
 
 	    //Check if and what ben provided from user
-		switch (userInput)
-		{
-		case '*': lockAccessPin.resetAddedInput(); break;
-		case '#': lockAccessPin.checkPin(); break;
-		default: lockAccessPin.addInput(keyPressed);
-		}
+		//switch (userInput)
+		//{
+		//case '*': lockAccessPin.resetAddedInput(); break;
+		//case '#': lockAccessPin.checkPin(); break;
+		//default: lockAccessPin.addInput(keyPressed);
+		//}
 	//else if (KpState == HELD)
 	//{
 	//	Serial << "Key:" << KeyPad.Getkey() << " being held\n";
