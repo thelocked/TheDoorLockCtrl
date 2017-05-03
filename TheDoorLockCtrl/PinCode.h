@@ -10,9 +10,9 @@
 #endif
 
 #define SUCCSESS 1
-#define FAIL 0
-#define TO_MANY_FAIL -1
-#define IGNORED_ATTEMPT 2
+#define FAIL -1
+//#define TO_MANY_FAIL -1
+#define IGNORED 0
 /*
 Used for user input, verification against the correct pin,
 counting number of incorrect inputs and if to many return that.

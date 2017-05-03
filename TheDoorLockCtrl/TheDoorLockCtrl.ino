@@ -172,41 +172,45 @@ void loop() {
 		Serial << "\nEnable door access by enter correct pin code and confirm with <ENTER>\n";
 	}
 
-	/*Begin Keypad Checked for input states and read input.*/
-	byte kpState = KeyPad.Key_State();
-
-	//Checks if keypad state has changed or not compared to last detected state
-	//Only if new state is detected read from keypad
-	if (kpState != lastKpState)
-	{
-		if (kpState = RELEASED) //keyPadState = NO_KEY
-		{
-			//Detected No keys on keypad are pressed.
-			//To help ensure correct user input so must keypad have been released and no input
-			//detect for period from keypad
-			//set timer for how long no keys are pressed
-			keypadReleasedTimer = millis();
-		}
-		else if (kpState = PRESSED)
-		{
-		
-			//Check if keypad has been released period is enough for read new key press
-			if (LastkeyPressedTime + pauseForNextKeyPress < millis())
-			{
-				//keypad released period is enough for reading new key press
-				userInput = KeyPad.Getkey();
-				Serial << "Pressed Key: " << userInput << "\n";
-
-			}
+	///*ALLT DETTA SOM GÄLLER FUNKTIONALLITETEN FÖR AVLÄSNING AV KEYPAD ÄR FÖRTILLFÄLLET BORKOMMENTERAT
+	//efter som jag hittils inte har en aning om detta funkar eller inte
 	
-		}
-		//Update last keypad state with New keypad state 
-		lastKpState = kpState;
-	}
+	
+	///*Begin Keypad Checked for input states and read input.*/
+	//byte kpState = KeyPad.Key_State();
 
+	////Checks if keypad state has changed or not compared to last detected state
+	////Only if new state is detected read from keypad
+	//if (kpState != lastKpState)
+	//{
+	//	if (kpState = RELEASED) //keyPadState = NO_KEY
+	//	{
+	//		//Detected No keys on keypad are pressed.
+	//		//To help ensure correct user input so must keypad have been released and no input
+	//		//detect for period from keypad
+	//		//set timer for how long no keys are pressed
+	//		keypadReleasedTimer = millis();
+	//	}
+	//	else if (kpState = PRESSED)
+	//	{
+	//	
+	//		//Check if keypad has been released period is enough for read new key press
+	//		if (LastkeyPressedTime + pauseForNextKeyPress < millis())
+	//		{
+	//			//keypad released period is enough for reading new key press
+	//			userInput = KeyPad.Getkey();
+	//			Serial << "Pressed Key: " << userInput << "\n";
 
+	//		}
+	//
+	//	}
+	//	//Update last keypad state with New keypad state 
+	//	lastKpState = kpState;
+	//}
+
+	
 	/*End of keypad check*/
-
+	
 
 	/*Check serial for user input
 	This enables input from serial connection for test and debug
@@ -217,6 +221,19 @@ void loop() {
 	char serialInput = Serial.read(); //Trying to read and store from serial input;
 	if ((serialInput > 0) && (serialInput < 255))
 	{
+		//Run through a bunch of chars that if detected they should be silently ignored
+		//and not turn up as provided user input
+		switch (serialInput)
+		{
+		case 255:
+		case '\n': //new line;
+			//this is just rushed through with no break statements. Because if anything is matched same result is provided
+				serialInput = 0;
+				break;
+		default:
+			break;
+		}
+
 		//userInput = Serial.read();//get one char from serial.
 		//Check if value matches anything compared to chars provided by keypad
 		//Note this is needed to filter out junk and bogus values from serial input
@@ -225,14 +242,15 @@ void loop() {
 		if (ifFoundIndexNo < 0)
 		{
 			//No match found reset value back to nothing
+			Serial << "Found Serial input not matched by keypad: '" << userInput << " in Dec: ";
+			Serial.println(userInput, DEC);
 			userInput = 0;
-			Serial << "Serial input not matched and ignored\n";
 		}
 		else
 		{
-			//userInput match with kaypad is found
+			//userInput match with keypad is found
 			userInput = serialInput; //Update user input with serial find,
-		Serial << "Serial input found: " << userInput<< "\n";
+		Serial << "Serial input found: '" << userInput<< "' in Dec: ";
 		Serial.println(userInput, DEC);
 		}
 
@@ -254,7 +272,7 @@ void loop() {
 		//User whants to reset current pin sequnce.Note Not the number of faild attemts
 		case USERINPUT_RESET_KEY: lockAccessPin.resetAddedInput(); 
 			//Output to serial com window
-			Serial << "Current pin sequence Reset";
+			Serial << "Current pin sequence Reset by user\n";
 			break; 
 		//User whants to commit current key sequence and it vill be verifed
 		case USERINPUT_COMMIT_KEY: userInputCommit(); break;
@@ -308,6 +326,7 @@ void userInputCommit()
 		{
 			//The user have not reached max failed attempts
 			userIncorrectCount++; //Increment failed attemts counter
+			Serial << "Number of incorrect attempts: " << userIncorrectCount << "/n";
 		}
 		else
 		{

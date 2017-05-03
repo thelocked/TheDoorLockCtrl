@@ -17,10 +17,10 @@ PinCode::PinCode(char * pincode,
 String PinCode::addInput(char addInput)
 {
 
-	//Ignore adding if user input is larger then pincode
-	if (userInput.length() < correctPin.length())
+	//Ignore adding if user input already have more chars than then correct pincode
+	if (userInput.length() <= correctPin.length())
 	{
-		//Current input is not larger
+		//Current input have less chars than correct pin
 		userInput = userInput + addInput;
 		//return userInput;
 	}
@@ -47,18 +47,34 @@ int PinCode::checkPin()
 	if (lengthOfUserInput == 0)
 	{
 		//User have not provided any input to evaluate.
-		//return IGNORED;
+		return IGNORED;
 	}
-	else if (userInput==correctPin)
+	else if (lengthOfUserInput == correctPin.length())
 	{
-		//User input is matched to pincode
+		//User input is matched by lenght
+
+		//Now verfy match both pincodes char by char
+		//Note: i have totally ignored investigating all possibillites to do this in a more elegant way
+		//But this works correct!
+		for (byte charIndexPins = 0; charIndexPins < lengthOfUserInput; charIndexPins++)
+		{
+			if (userInput[charIndexPins] != correctPin[charIndexPins])
+			{
+				//Matching of pincodes failed
+				return FAIL; //Exit and return fail.
+			}
+		}
+		//Every thing matches correctly
 		return SUCCSESS;
 	}
 	else
 	{
-		//No match is found
+		//Length of pincodes does not match
 		return FAIL;
 	}
+
+
+	
 
 	//else if	(lengthOfUserInput != correctPin.length())
 	//{
@@ -74,9 +90,7 @@ int PinCode::checkPin()
 	//	}
 
 	//}
-	int status = IGNORED_ATTEMPT;
 
-	return IGNORED_ATTEMPT;
 }
 
 
