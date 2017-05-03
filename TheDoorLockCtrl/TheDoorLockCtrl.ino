@@ -37,15 +37,18 @@ Hur systemet används:
 	har hur lång tid på sig som helst att mata in koden.
 
 
-
-
-
 */
-#if defined(ARDUINO) && ARDUINO >= 100
-#include "arduino.h"
-#else
-#include "WProgram.h"
-#endif
+
+	#if _VM_DEBUG
+	#pragma GCC optimize ("O0")
+	#endif
+
+
+//#if defined(ARDUINO) && ARDUINO >= 100
+//#include "arduino.h"
+//#else
+//#include "WProgram.h"
+//#endif
 
 
 
@@ -114,7 +117,7 @@ long userInputreset = userInputResetDelay;
 long inputSessionResetTime = 0; //After how long time all input and retries will be reseted.
 
 
-
+long keypadReleasedTimer = 0;
 
 
 
@@ -140,18 +143,18 @@ void setup() {
 	digitalWrite(LED_ERR_PIN, LOW); //Led off
 
 	//To prevent detection of false keypress on start up
-	KeyPad.Getkey();
+	//KeyPad.Getkey();
 
 
 	Serial.println("End of setup.");
 	
-	resetUserInput(); //Clear all and provide serial output instructions.
+	//resetUserInput(); //Clear all and provide serial output instructions.
 
 }
 
 // the loop function runs over and over again until power down or reset
 void loop() {
-	char userInput = false;
+	char userInput = 0;
 	
 
 	//Check if any userinput is provided or input session should be reset
@@ -164,33 +167,56 @@ void loop() {
 		Serial << "\nEnable door access by enter correct pin code and confirm with <ENTER>\n";
 	}
 
+	//Check keypad input states and read input.
+	byte kpState = KeyPad.Key_State();
 
-	char keyPressed = false;
+	//Checks if keypad state has changed or not compared to last detected state
+	//Only if new state is detected read from keypad
+	if (kpState != lastKpState)
+	{
+		if (kpState = RELEASED) //keyPadState = NO_KEY
+		{
+			//Detected No keys on keypad are pressed.
+			//To help ensure correct user input so must keypad have been released and no input
+			//detect for period from keypad
+			//set timer for how long no keys are pressed
+			keypadReleasedTimer = millis();
+		}
+		else if (kpState = PRESSED)
+		{
+		
+			//Check if keypad has been released period is enough for read new key press
+			if (LastkeyPressedTime + pauseForNextKeyPress < millis())
+			{
+				//keypad released period is enough for reading new key press
+				userInput = KeyPad.Getkey();
+				Serial << "Pressed Key: " << userInput << "\n";
+
+			}
+	
+		}
+		//Update last keypad state with New keypad state 
+		lastKpState = kpState;
+	}
+
 
 	
-	//Check for keypad input if a key is pressed on key pad
-	byte KpState = KeyPad.Key_State();
 
-	if (KpState == PRESSED)
-	{
-		userInput = KeyPad.Getkey();
-			Serial << "Pressed Key: " << userInput << "\n";
-	}
 
 	//Check serial for user input
 	char serialInput;
 	if (Serial.available() > 0)
 	{
-		char serialRead = Serial.read();//get one char from serial.
-		Serial << "Serial input found: " << serialRead << "\n";
-		switch (serialRead)
-		{
-			case '*': lockAccessPin.resetAddedInput(); break;
-			case '\n': lockAccessPin.checkPin(); break;
-			default: lockAccessPin.addInput(keyPressed);
-		}
+		userInput = Serial.read();//get one char from serial.
+		Serial << "Serial input found: " << userInput<< "\n";
+		Serial.println(userInput, DEC);
+	
 
 	}
+		switch (serialRead)
+			case '*': lockAccessPin.resetAddedInput(); break;
+			case '\n': lockAccessPin.checkPin(); break;
+			default: lockAccessPin.addInput(userInput);
 
 	    //Check if and what ben provided from user
 		switch (userInput)
@@ -216,6 +242,9 @@ void loop() {
 	//	Serial << "Waiting\n";
 	//}
 }
+
+
+
 
 //Called when user sends commit command and evaluates pin code and
 //provide response depending on result
@@ -260,6 +289,8 @@ void beginAlarm()
 	Serial << "Alarm is trigged!!";
 }
 
+
+
 //Checks time if all user input and incorrect attempts will be reseted and
 //makes system ready for another user.
 bool checkUserSessionResetTimer()
@@ -288,7 +319,7 @@ void resetUserInput()
 	alarmTriggerTime = 0; //is or when was the alarm trigged.
 
 
-	inputSessionResetTime = millis();
+	inputSessionResetTime = inputSessionResetTime + millis();
 
 	
 

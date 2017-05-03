@@ -46,7 +46,7 @@ int PinCode::checkPin()
 	if (lengthOfUserInput == 0)
 	{
 		//User have not provided any input to evaluate.
-		return IGNORED;
+		//return IGNORED;
 	}
 	else if (userInput==correctPin)
 	{
@@ -73,9 +73,9 @@ int PinCode::checkPin()
 	//	}
 
 	//}
-	int status = IGNORED;
+	int status = IGNORED_ATTEMPT;
 
-	return IGNORED;
+	return IGNORED_ATTEMPT;
 }
 
 
