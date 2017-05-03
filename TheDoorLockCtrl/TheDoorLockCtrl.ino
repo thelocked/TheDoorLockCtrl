@@ -211,13 +211,16 @@ void loop() {
 	/*Check serial for user input
 	This enables input from serial connection for test and debug
 	Note this can be commented out or removed*/
-	char serialInput;
-	if (Serial.available() > 0)
+	
+	//while(Serial.read() != -1);  //clears data in the PC Serial Port
+	
+	char serialInput = Serial.read(); //Trying to read and store from serial input;
+	if ((serialInput > 0) && (serialInput < 255))
 	{
-		userInput = Serial.read();//get one char from serial.
+		//userInput = Serial.read();//get one char from serial.
 		//Check if value matches anything compared to chars provided by keypad
 		//Note this is needed to filter out junk and bogus values from serial input
-		int ifFoundIndexNo = keyPadKEYS.indexOf(userInput); //Search for chars that if found in keypad layout.
+		int ifFoundIndexNo = keyPadKEYS.indexOf(serialInput); //Search for chars that if found in keypad layout.
 		//if (!keyPadKEYS.indexOf(userInput))
 		if (ifFoundIndexNo < 0)
 		{
@@ -228,6 +231,7 @@ void loop() {
 		else
 		{
 			//userInput match with kaypad is found
+			userInput = serialInput; //Update user input with serial find,
 		Serial << "Serial input found: " << userInput<< "\n";
 		Serial.println(userInput, DEC);
 		}
