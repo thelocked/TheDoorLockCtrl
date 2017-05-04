@@ -60,11 +60,11 @@ Hur systemet används:
 #define failedAttemptsTriggerAlarm 3 //How many times the user may enter wrong pin bef alarm trigger.
 
 
+//During debug this is disabled its set to allot of time
+#define userInputResetDelay 600000//30000 //How long any input session from keypad will stored in millis
+#define doorAccessEnabledPeriod 5000//How long the user is abled to open door millis.
 
-#define userInputResetDelay 30000 //How long any input session from keypad will stored in millis
-#define doorAccessEnabledPeriod 15000//How long the user is abled to open door millis.
-
-#define alarmTriggeredPeriod 60000//How long will the alarm output stay triggered millis.
+#define alarmTriggeredPeriod 10000//60000//How long will the alarm output stay triggered millis.
 
 //How long the keypad has to be released between key presses. To not record stuck buttons or interference on input pin.
 #define pauseForNextKeyPress 500 
@@ -121,6 +121,8 @@ long inputSessionResetTime = 0; //After how long time all input and retries will
 byte userIncorrectCount = 0;
 long keypadReleasedTimer = 0;
 
+long countDownOutput = 0; //For the serial output count down of Lock/Alarm Reset
+
 
 
 
@@ -169,7 +171,7 @@ void loop() {
 		//Reset timer has triggerd new user session
 		Serial << "Keypad input session is Reset.\n";
 		//Print instructions to serial window
-		Serial << "\nEnable door access by enter correct pin code and confirm with <ENTER>\n";
+		Serial << "\nEnable door access by enter correct pin code and confirm with '#' or reset with '*'\n";
 	}
 
 	///*ALLT DETTA SOM GÄLLER FUNKTIONALLITETEN FÖR AVLÄSNING AV KEYPAD ÄR FÖRTILLFÄLLET BORKOMMENTERAT
@@ -219,17 +221,18 @@ void loop() {
 	//while(Serial.read() != -1);  //clears data in the PC Serial Port
 	
 	char serialInput = Serial.read(); //Trying to read and store from serial input;
-	if ((serialInput > 0) && (serialInput < 255))
+	if ((serialInput > 1) && (serialInput < 255))
 	{
 		//Run through a bunch of chars that if detected they should be silently ignored
 		//and not turn up as provided user input
 		switch (serialInput)
 		{
+		case 0:
 		case 255:
 		case '\n': //new line;
 			//this is just rushed through with no break statements. Because if anything is matched same result is provided
-				serialInput = 0;
-				break;
+			serialInput = 0;
+			break;
 		default:
 			break;
 		}
@@ -237,21 +240,26 @@ void loop() {
 		//userInput = Serial.read();//get one char from serial.
 		//Check if value matches anything compared to chars provided by keypad
 		//Note this is needed to filter out junk and bogus values from serial input
+		if (serialInput > 0)  //Run this only when input is provided 
+		{
 		int ifFoundIndexNo = keyPadKEYS.indexOf(serialInput); //Search for chars that if found in keypad layout.
 		//if (!keyPadKEYS.indexOf(userInput))
-		if (ifFoundIndexNo < 0)
+		if (ifFoundIndexNo >= 0)
+		{
+		//userInput match with keypad is found
+		userInput = serialInput; //Update user input with serial find,
+		Serial << "Serial input found:  in Dec: ";
+		Serial.print(userInput, DEC);
+		Serial << " " << userInput << "\n";
+	}
+		else
 		{
 			//No match found reset value back to nothing
 			Serial << "Found Serial input not matched by keypad: '" << userInput << " in Dec: ";
 			Serial.println(userInput, DEC);
 			userInput = 0;
 		}
-		else
-		{
-			//userInput match with keypad is found
-			userInput = serialInput; //Update user input with serial find,
-		Serial << "Serial input found: '" << userInput<< "' in Dec: ";
-		Serial.println(userInput, DEC);
+
 		}
 
 
@@ -295,7 +303,7 @@ void loop() {
 
 	}
 
-	void checkLockAlarmResetTimer();
+	//checkLockAlarmResetTimer();
 }
 
 
@@ -315,31 +323,53 @@ void userInputCommit()
 		digitalWrite(DOOR_LOCK_PIN, HIGH);//Enables door accesss by disable lock by turning output high
 		digitalWrite(ALARM_PIN, LOW);//Disable alarm if its enabled.NOTE User is able to deactivate alarm with correct pin.
 		digitalWrite(STATUS_LED_PIN,HIGH);//Turn status led on when lock is disabled.
-			lockAlarmResetTimer = millis() + doorAccessEnabledPeriod;//Set reset time for output enable period
-			Serial << "Door lock is disabled/n";
+		long currentTime = millis();
+		lockAlarmResetTimer = currentTime + doorAccessEnabledPeriod;//Set reset time for output enable period
+			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
+			Serial << "Correct pin has been provided and Door lock will be disabled\n";
+			//Nödlösning för att få det att fungera någorlunda korrekt
+			delay(doorAccessEnabledPeriod);
+			digitalWrite(DOOR_LOCK_PIN, LOW);//Enables Alarm device by turning output high
+			Serial << "Door is now locked again\n";
 	}
 	else if (pinCheckStatus == FAIL)
 	{
 		//User have entered incorrect pin code
-		//Check how many incorrect attempts
-		if (userIncorrectCount < failedAttemptsTriggerAlarm)
+		userIncorrectCount++; //Increment failed attempts counter
+		//Check if or how many incorrect attempts
+		Serial << "Incorrect pin from user\n";
+		if (userIncorrectCount >= failedAttemptsTriggerAlarm)
 		{
-			//The user have not reached max failed attempts
-			userIncorrectCount++; //Increment failed attemts counter
-			Serial << "Number of incorrect attempts: " << userIncorrectCount << "/n";
+			//User have provided to many incorrect pin code and alarm device will be enabled
+			Serial << "To many incorrect pins provided\n";
+			digitalWrite(ALARM_PIN, HIGH);//Enables Alarm device by turning output high
+			//statusLedEnable(true);//Turn status led on.
+			long currentTime = millis();
+			lockAlarmResetTimer = currentTime + doorAccessEnabledPeriod;//Set reset time for output enable period
+			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
+			Serial << "Alarm is activated\n";			//User has provided to many failed attempts
+
+			//Nödlösning för att få det att fungera någorlunda korrekt
+			delay(alarmTriggeredPeriod);
+			digitalWrite(ALARM_PIN, LOW);//Enables Alarm device by turning output high
+			Serial << "Alarm is deactivated\n";
+
+
 		}
 		else
 		{
-			//User have provided to many incorrect pin code and alarm device will be enabled
-			digitalWrite(ALARM_PIN, HIGH);//Enables Alarm device by turning output high
-			//statusLedEnable(true);//Turn status led on.
-			lockAlarmResetTimer = millis() + doorAccessEnabledPeriod;//Set reset time for output enable period
-			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
-			Serial << "Alarm is activated/n";			//User has provided to many failed attempts
 			
+			//The user have not reached max failed attempts
+			Serial << "Number of incorrect attempts: " << userIncorrectCount << " of max " << failedAttemptsTriggerAlarm << "\n";
 
 		}
 	}
+	else
+	{
+		//Returned val from pin check is IGNORE
+		Serial << "This user commit is ignored\n";
+	}
+
 
 
 }
@@ -354,9 +384,14 @@ bool checkUserSessionResetTimer()
 	if (inputSessionResetTime < millis())
 	{
 		//Last Session Time is passed and system will reset all input.
-		lockAccessPin.resetAll();//Resets all input from last session
+		lockAccessPin.resetAddedInput();//Resets added input in pin sequence from last session
 		userIncorrectCount = 0;//Resets counter for previus faled input attemps
 		inputSessionResetTime = userInputResetDelay + millis();//Set start time for new session
+		//Try to flush all reaming input from serial
+		while (Serial.available() > 0)
+		{
+			char c = Serial.read();
+		}
 
 		return true;
 	}
@@ -371,17 +406,43 @@ bool checkUserSessionResetTimer()
 //NOTE this is used for both alarm and lock pins
 bool checkLockAlarmResetTimer()
 {
-	if (lockAlarmResetTimer < millis())
+	
+	long currentTime = millis();
+	if (lockAlarmResetTimer < 1)
+	{
+		//Do nothing
+		return false;
+	}
+	else if (lockAlarmResetTimer < currentTime)
 	{
 		//Last Session Time is passed and system lock and alarm output pins.
 		digitalWrite(DOOR_LOCK_PIN, LOW); //Disables door access
 		digitalWrite(ALARM_PIN, LOW);//Disables alarm
 		digitalWrite(STATUS_LED_PIN,LOW);//Disables status led
+		lockAlarmResetTimer = 0; //Disable timer
+		Serial << "All enabled outputs is reset\n";
 		return true;
 	}
-	else
+	else 
 	{
 		//Current session is still valid and no reset
+	//Provide countdown to serial output
+	long countDownInterval = 5000; //Sets how often countdown is sent to serial output;
+	//Get remaining period of countdown in seconds and adjust to interval
+	long secForOutput = lockAlarmResetTimer / 1000;
+
+	if (countDownOutput = 0 || secForOutput < countDownOutput)
+	{
+		//Begin countdown
+		Serial << "Trigged output will reset in " << secForOutput << " seconds\n";
+		countDownOutput = secForOutput;
+	}
+	//else if (secForOutput < countDownOutput)
+	//{
+	//	//Check that output not will be repeated
+	//	Serial << "Trigged output will reset in " << secForOutput << " seconds\n";
+
+	//}
 		return false;
 	}
 }

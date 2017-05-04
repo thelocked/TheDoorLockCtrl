@@ -33,8 +33,9 @@ void PinCode::resetAddedInput()
 	userInput = "";
 }
 
-void PinCode::resetAll()
-{}
+//void PinCode::resetAll()
+//{
+//}
 
 
 
@@ -42,6 +43,13 @@ void PinCode::resetAll()
 //if correct or incorrect action should be trigged or ignored
 int PinCode::checkPin()
 {
+	if (userInput == correctPin)
+	{
+		//Input is matched with pin
+		return SUCCSESS;
+	}
+	
+
 	int lengthOfUserInput = userInput.length();
 	//Check if user input have correct length
 	if (lengthOfUserInput == 0)
@@ -49,29 +57,33 @@ int PinCode::checkPin()
 		//User have not provided any input to evaluate.
 		return IGNORED;
 	}
-	else if (lengthOfUserInput == correctPin.length())
-	{
-		//User input is matched by lenght
 
-		//Now verfy match both pincodes char by char
-		//Note: i have totally ignored investigating all possibillites to do this in a more elegant way
-		//But this works correct!
-		for (byte charIndexPins = 0; charIndexPins < lengthOfUserInput; charIndexPins++)
-		{
-			if (userInput[charIndexPins] != correctPin[charIndexPins])
-			{
-				//Matching of pincodes failed
-				return FAIL; //Exit and return fail.
-			}
-		}
-		//Every thing matches correctly
-		return SUCCSESS;
-	}
-	else
-	{
-		//Length of pincodes does not match
-		return FAIL;
-	}
+	return FAIL;
+
+
+	//else if (lengthOfUserInput == correctPin.length())
+	//{
+	//	//User input is matched by lenght
+
+	//	//Now verfy match both pincodes char by char
+	//	//Note: i have totally ignored investigating all possibillites to do this in a more elegant way
+	//	//But this works correct!
+	//	for (byte charIndexPins = 0; charIndexPins < lengthOfUserInput; charIndexPins++)
+	//	{
+	//		if (userInput[charIndexPins] != correctPin[charIndexPins])
+	//		{
+	//			//Matching of pincodes failed
+	//			return FAIL; //Exit and return fail.
+	//		}
+	//	}
+	//	//Every thing matches correctly
+	//	return SUCCSESS;
+	//}
+	//else
+	//{
+	//	//Length of pincodes does not match
+	//	return FAIL;
+	//}
 
 
 	
