@@ -327,10 +327,7 @@ void userInputCommit()
 		lockAlarmResetTimer = currentTime + doorAccessEnabledPeriod;//Set reset time for output enable period
 			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
 			Serial << "Correct pin has been provided and Door lock will be disabled\n";
-			//Nödlösning för att få det att fungera någorlunda korrekt
-			delay(doorAccessEnabledPeriod);
-			digitalWrite(DOOR_LOCK_PIN, LOW);//Enables Alarm device by turning output high
-			Serial << "Door is now locked again\n";
+
 	}
 	else if (pinCheckStatus == FAIL)
 	{
@@ -349,10 +346,6 @@ void userInputCommit()
 			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
 			Serial << "Alarm is activated\n";			//User has provided to many failed attempts
 
-			//Nödlösning för att få det att fungera någorlunda korrekt
-			delay(alarmTriggeredPeriod);
-			digitalWrite(ALARM_PIN, LOW);//Enables Alarm device by turning output high
-			Serial << "Alarm is deactivated\n";
 
 
 		}
@@ -406,13 +399,15 @@ bool checkUserSessionResetTimer()
 //NOTE this is used for both alarm and lock pins
 bool checkLockAlarmResetTimer()
 {
-	
-	long currentTime = millis();
-	if (lockAlarmResetTimer < 1)
+	//Check if it is any thing going o
+	if (lockAlarmResetTimer = 0)
 	{
-		//Do nothing
+		//Do nothing just exit.
 		return false;
 	}
+
+
+	long currentTime = millis();
 	else if (lockAlarmResetTimer < currentTime)
 	{
 		//Last Session Time is passed and system lock and alarm output pins.
@@ -431,20 +426,13 @@ bool checkLockAlarmResetTimer()
 	//Get remaining period of countdown in seconds and adjust to interval
 	long secForOutput = lockAlarmResetTimer / 1000;
 
-	if (countDownOutput = 0 || secForOutput < countDownOutput)
-	{
-		//Begin countdown
-		Serial << "Trigged output will reset in " << secForOutput << " seconds\n";
-		countDownOutput = secForOutput;
-	}
+
 	//else if (secForOutput < countDownOutput)
 	//{
 	//	//Check that output not will be repeated
 	//	Serial << "Trigged output will reset in " << secForOutput << " seconds\n";
 
 	//}
-		return false;
-	}
 }
 
 
