@@ -108,7 +108,7 @@ OnewireKeypad <Print, 12> KeyPad(Serial, keyPadKeysLayout, keypadRows, keypadCol
 long LastkeyPressedTime = 0; //last input from user if not reseted..
 //long doorLockOpenTime = 0; //is access or when was the lock opened.
 //long alarmTriggerTime = 0; //is or when was the alarm triggerd.
-long lockAlarmResetTimer = 0;//Start time for lock or alarm output enabed.
+long resetTimeAlarmLock = 0;//Start time for lock or alarm output enabed.
 
 byte lastKpState = WAITING;
 char timeLastKeyPress = 0;
@@ -122,6 +122,8 @@ byte userIncorrectCount = 0;
 long keypadReleasedTimer = 0;
 
 long countDownOutput = 0; //For the serial output count down of Lock/Alarm Reset
+
+long lockStatusEnabledtimer = 0;//Value sets if lock status vill be enabled.
 
 
 
@@ -158,11 +160,11 @@ void setup() {
 
 // the loop function runs over and over again until power down or reset
 void loop() {
-	#if _VM_DEBUG
-	#pragma GCC optimize ("O0")
-	#endif
+#if _VM_DEBUG
+#pragma GCC optimize ("O0")
+#endif
 	char userInput = 0; //Stores value read from userinput
-	
+
 
 	/*Check if any userinput is provided or input session should be reset
 	NOTE: Does nothing to alarm or door outputs.*/
@@ -176,8 +178,8 @@ void loop() {
 
 	///*ALLT DETTA SOM GÄLLER FUNKTIONALLITETEN FÖR AVLÄSNING AV KEYPAD ÄR FÖRTILLFÄLLET BORKOMMENTERAT
 	//efter som jag hittils inte har en aning om detta funkar eller inte
-	
-	
+
+
 	///*Begin Keypad Checked for input states and read input.*/
 	//byte kpState = KeyPad.Key_State();
 
@@ -210,16 +212,16 @@ void loop() {
 	//	lastKpState = kpState;
 	//}
 
-	
+
 	/*End of keypad check*/
-	
+
 
 	/*Check serial for user input
 	This enables input from serial connection for test and debug
 	Note this can be commented out or removed*/
-	
+
 	//while(Serial.read() != -1);  //clears data in the PC Serial Port
-	
+
 	char serialInput = Serial.read(); //Trying to read and store from serial input;
 	if ((serialInput > 1) && (serialInput < 255))
 	{
@@ -242,29 +244,29 @@ void loop() {
 		//Note this is needed to filter out junk and bogus values from serial input
 		if (serialInput > 0)  //Run this only when input is provided 
 		{
-		int ifFoundIndexNo = keyPadKEYS.indexOf(serialInput); //Search for chars that if found in keypad layout.
-		//if (!keyPadKEYS.indexOf(userInput))
-		if (ifFoundIndexNo >= 0)
-		{
-		//userInput match with keypad is found
-		userInput = serialInput; //Update user input with serial find,
-		Serial << "Serial input found:  in Dec: ";
-		Serial.print(userInput, DEC);
-		Serial << " " << userInput << "\n";
-	}
-		else
-		{
-			//No match found reset value back to nothing
-			Serial << "Found Serial input not matched by keypad: '" << userInput << " in Dec: ";
-			Serial.println(userInput, DEC);
-			userInput = 0;
-		}
+			int ifFoundIndexNo = keyPadKEYS.indexOf(serialInput); //Search for chars that if found in keypad layout.
+			//if (!keyPadKEYS.indexOf(userInput))
+			if (ifFoundIndexNo >= 0)
+			{
+				//userInput match with keypad is found
+				userInput = serialInput; //Update user input with serial find,
+				Serial << "Serial input found:  in Dec: ";
+				Serial.print(userInput, DEC);
+				Serial << " " << userInput << "\n";
+			}
+			else
+			{
+				//No match found reset value back to nothing
+				Serial << "Found Serial input not matched by keypad: '" << userInput << " in Dec: ";
+				Serial.println(userInput, DEC);
+				userInput = 0;
+			}
 
 		}
 
 
-		
-	
+
+
 
 	}
 
@@ -274,17 +276,17 @@ void loop() {
 
 	if (userInput > 0)
 	{
-	    //New input found provided from user
+		//New input found provided from user
 		switch (userInput)
 		{
-		//User whants to reset current pin sequnce.Note Not the number of faild attemts
-		case USERINPUT_RESET_KEY: lockAccessPin.resetAddedInput(); 
+			//User whants to reset current pin sequnce.Note Not the number of faild attemts
+		case USERINPUT_RESET_KEY: lockAccessPin.resetAddedInput();
 			//Output to serial com window
 			Serial << "Current pin sequence Reset by user\n";
-			break; 
-		//User whants to commit current key sequence and it vill be verifed
+			break;
+			//User whants to commit current key sequence and it vill be verifed
 		case USERINPUT_COMMIT_KEY: userInputCommit(); break;
-		//Input provider by user is added to pincode sequence and result of it all is returned
+			//Input provider by user is added to pincode sequence and result of it all is returned
 		default: String allUserInput = lockAccessPin.addInput(userInput);
 			//Prints to serial to indikate pin sequence lenght, 
 
@@ -303,72 +305,53 @@ void loop() {
 
 	}
 
-	//checkLockAlarmResetTimer();
+	//Check if output reset timer is passed.
+	//Check if this function should be skipped or not
+	if (resetTimeAlarmLock > 0)
+	{ 
+		//Serial count down
+		long sekToReset, t, tInsek;
+		t = millis();
+		tInsek = t / 1000;
+		sekToReset = (resetTimeAlarmLock - t) / 1000;
+		Serial << "Time to Reset: " + sekToReset;
+		
+		//checkAlarmLockResetTimer();
+	}
+
+
 }
 
 
 
 
 
-//Called when user sends commit command and evaluates pin code and
-//provide response depending on result
-void userInputCommit()
+bool setOutputPinStatus(byte outPutpinNo, byte pinStatus = HIGH)
 {
-	Serial << "user committed current input and pin code evaluation is performed\n";
-	int pinCheckStatus = lockAccessPin.checkPin();
-
-	if (pinCheckStatus == SUCCSESS)
+	if (pinStatus)
 	{
-		//User have provided correct pin code and lock will be disabled
-		digitalWrite(DOOR_LOCK_PIN, HIGH);//Enables door accesss by disable lock by turning output high
-		digitalWrite(ALARM_PIN, LOW);//Disable alarm if its enabled.NOTE User is able to deactivate alarm with correct pin.
-		digitalWrite(STATUS_LED_PIN,HIGH);//Turn status led on when lock is disabled.
-		long currentTime = millis();
-		lockAlarmResetTimer = currentTime + doorAccessEnabledPeriod;//Set reset time for output enable period
-			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
-			Serial << "Correct pin has been provided and Door lock will be disabled\n";
-
-	}
-	else if (pinCheckStatus == FAIL)
-	{
-		//User have entered incorrect pin code
-		userIncorrectCount++; //Increment failed attempts counter
-		//Check if or how many incorrect attempts
-		Serial << "Incorrect pin from user\n";
-		if (userIncorrectCount >= failedAttemptsTriggerAlarm)
-		{
-			//User have provided to many incorrect pin code and alarm device will be enabled
-			Serial << "To many incorrect pins provided\n";
-			digitalWrite(ALARM_PIN, HIGH);//Enables Alarm device by turning output high
-			//statusLedEnable(true);//Turn status led on.
-			long currentTime = millis();
-			lockAlarmResetTimer = currentTime + doorAccessEnabledPeriod;//Set reset time for output enable period
-			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
-			Serial << "Alarm is activated\n";			//User has provided to many failed attempts
-
-
-
-		}
-		else
-		{
-			
-			//The user have not reached max failed attempts
-			Serial << "Number of incorrect attempts: " << userIncorrectCount << " of max " << failedAttemptsTriggerAlarm << "\n";
-
-		}
+		digitalWrite(outPutpinNo, HIGH);
 	}
 	else
 	{
-		//Returned val from pin check is IGNORE
-		Serial << "This user commit is ignored\n";
+		digitalWrite(outPutpinNo,LOW);
 	}
-
-
-
 }
 
 
+/*Activates alarm output pin to provided state for provided period or
+disable directly*/
+bool activateAlarmLockOutput(int outPinNumber, long resetDeleay = -1, bool pinState = HIGH)
+{
+	//Set output pin state
+	setOutputPinStatus(outPinNumber, pinState);
+	
+	//Set counter when active period is reseted
+	long currentTime = millis();
+	resetTimeAlarmLock = currentTime + resetDeleay;
 
+
+}
 
 //Checks time if all user input and incorrect attempts will be reseted and
 //makes system ready for another user.
@@ -395,36 +378,92 @@ bool checkUserSessionResetTimer()
 	}
 }
 
+
 //Checks time if the current lock and alarm output pins should be disabled
 //NOTE this is used for both alarm and lock pins
-bool checkLockAlarmResetTimer()
+//bool checkAlarmLockResetTimer()
+//{
+//
+//
+//
+//Called when user sends commit command and evaluates pin code and
+//provide response depending on result
+void userInputCommit()
 {
-	//Check if it is any thing going o
-	if (lockAlarmResetTimer = 0)
+	Serial << "user committed current input and pin code evaluation is performed\n";
+	int pinCheckStatus = lockAccessPin.checkPin();
+
+	if (pinCheckStatus == SUCCSESS)
 	{
-		//Do nothing just exit.
-		return false;
+
+			activateAlarmLockOutput(DOOR_LOCK_PIN,doorAccessEnabledPeriod);
+			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
+			Serial << "Correct pin has been provided and Door lock will be disabled\n";
+
+	}
+	else if (pinCheckStatus == FAIL)
+	{
+		//User have entered incorrect pin code
+		userIncorrectCount++; //Increment failed attempts counter
+		//Check if or how many incorrect attempts
+		Serial << "Incorrect pin from user\n";
+		if (userIncorrectCount >= failedAttemptsTriggerAlarm)
+		{
+			//User have provided to many incorrect pin code and alarm device will be enabled
+			Serial << "To many incorrect pins provided\n";
+			//digitalWrite(ALARM_PIN, HIGH);//Enables Alarm device by turning output high
+			////statusLedEnable(true);//Turn status led on.
+			//long currentTime = millis();
+			
+			//Ativate Alarm OUTPUT!!
+			activateAlarmLockOutput(ALARM_PIN, alarmTriggeredPeriod);
+			
+			//resetTimeAlarmLock = currentTime + doorAccessEnabledPeriod;//Set reset time for output enable period
+			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
+			Serial << "Alarm is activated\n";			//User has provided to many failed attempts
+
+
+
+		}
+		else
+		{
+			
+			//The user have not reached max failed attempts
+			Serial << "Number of incorrect attempts: " << userIncorrectCount << " of max " << failedAttemptsTriggerAlarm << "\n";
+
+		}
+	}
+	else
+	{
+		//Returned val from pin check is IGNORE
+		Serial << "This user commit is ignored\n";
 	}
 
 
-	long currentTime = millis();
-	else if (lockAlarmResetTimer < currentTime)
-	{
-		//Last Session Time is passed and system lock and alarm output pins.
-		digitalWrite(DOOR_LOCK_PIN, LOW); //Disables door access
-		digitalWrite(ALARM_PIN, LOW);//Disables alarm
-		digitalWrite(STATUS_LED_PIN,LOW);//Disables status led
-		lockAlarmResetTimer = 0; //Disable timer
-		Serial << "All enabled outputs is reset\n";
-		return true;
-	}
-	else 
-	{
+
+}
+//	long currentTime;
+//		currentTime = millis();
+//	 if (resetTimeAlarmLock < currentTime)
+//	{
+//		//Last Session Time is passed and system lock and alarm output pins.
+//		digitalWrite(DOOR_LOCK_PIN, LOW); //Disables door access
+//		digitalWrite(ALARM_PIN, LOW);//Disables alarm
+//		digitalWrite(STATUS_LED_PIN,LOW);//Disables status led
+//		resetTimeAlarmLock= 0; //Disable timer
+//		Serial << "All enabled outputs is reset\n";
+//		return true;
+//	}
+//}
+
+
+	//else 
+	//{
 		//Current session is still valid and no reset
 	//Provide countdown to serial output
-	long countDownInterval = 5000; //Sets how often countdown is sent to serial output;
+	//long countDownInterval = 5000; //Sets how often countdown is sent to serial output;
 	//Get remaining period of countdown in seconds and adjust to interval
-	long secForOutput = lockAlarmResetTimer / 1000;
+	//long secForOutput = resetTimeAlarmLock / 1000;
 
 
 	//else if (secForOutput < countDownOutput)
@@ -433,7 +472,6 @@ bool checkLockAlarmResetTimer()
 	//	Serial << "Trigged output will reset in " << secForOutput << " seconds\n";
 
 	//}
-}
 
 
 //Used for resetting current user input session
