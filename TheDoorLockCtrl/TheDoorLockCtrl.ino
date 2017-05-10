@@ -49,6 +49,8 @@ Hur systemet används:
  
 
 
+#include "inputs.h"
+#include "inputHandle.h"
 #include "PinCode.h"
 #include "OnewireKeypad.h" //For info: http://playground.arduino.cc/Code/OneWireKeyPad
 
@@ -103,7 +105,7 @@ String keyPadKEYS = keyPadKeysLayout; //Keypad layout converted to string for la
 
 String keyPadKeysAsString = keyPadKEYS;
 //Object that gets input from keypad
-OnewireKeypad <Print, 12> KeyPad(Serial, keyPadKeysLayout, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
+OnewireKeypad <Print, 12> KeyPadforInput(Serial, keyPadKeysLayout, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
 
 long LastkeyPressedTime = 0; //last input from user if not reseted..
 //long doorLockOpenTime = 0; //is access or when was the lock opened.
@@ -124,7 +126,6 @@ long keypadReleasedTimer = 0;
 long countDownOutput = 0; //For the serial output count down of Lock/Alarm Reset
 
 long lockStatusEnabledtimer = 0;//Value sets if lock status vill be enabled.
-
 
 
 
@@ -163,9 +164,9 @@ void loop() {
 #if _VM_DEBUG
 #pragma GCC optimize ("O0")
 #endif
-	char userInput = 0; //Stores value read from userinput
+	char userInputFound = 0; //Stores value read from userinput
 
-
+	CheckingTest(true);
 	/*Check if any userinput is provided or input session should be reset
 	NOTE: Does nothing to alarm or door outputs.*/
 	if (checkUserSessionResetTimer())
@@ -179,42 +180,13 @@ void loop() {
 	///*ALLT DETTA SOM GÄLLER FUNKTIONALLITETEN FÖR AVLÄSNING AV KEYPAD ÄR FÖRTILLFÄLLET BORKOMMENTERAT
 	//efter som jag hittils inte har en aning om detta funkar eller inte
 
+	KeyPadforInput.Key_State();
+	CheckingKeypadInput(&KeyPadforInput);
+	//int currentState = 
+	//if (KeyPad. != lastKpState) {
 
-	///*Begin Keypad Checked for input states and read input.*/
-	//byte kpState = KeyPad.Key_State();
-
-	////Checks if keypad state has changed or not compared to last detected state
-	////Only if new state is detected read from keypad
-	//if (kpState != lastKpState)
-	//{
-	//	if (kpState = RELEASED) //keyPadState = NO_KEY
-	//	{
-	//		//Detected No keys on keypad are pressed.
-	//		//To help ensure correct user input so must keypad have been released and no input
-	//		//detect for period from keypad
-	//		//set timer for how long no keys are pressed
-	//		keypadReleasedTimer = millis();
-	//	}
-	//	else if (kpState = PRESSED)
-	//	{
-	//	
-	//		//Check if keypad has been released period is enough for read new key press
-	//		if (LastkeyPressedTime + pauseForNextKeyPress < millis())
-	//		{
-	//			//keypad released period is enough for reading new key press
-	//			userInput = KeyPad.Getkey();
-	//			Serial << "Pressed Key: " << userInput << "\n";
-
-	//		}
-	//
-	//	}
-	//	//Update last keypad state with New keypad state 
-	//	lastKpState = kpState;
+	//	userInputFound = CheckingKeypad(userInputFound);
 	//}
-
-
-	/*End of keypad check*/
-
 
 	/*Check serial for user input
 	This enables input from serial connection for test and debug
@@ -309,14 +281,22 @@ void loop() {
 	//Check if this function should be skipped or not
 	if (resetTimeAlarmLock > 0)
 	{ 
-		//Serial count down
-		long sekToReset, t, tInsek;
-		t = millis();
+		long t = millis();
+		if (t < resetTimeAlarmLock)
+		{
+		//Still counting down
+			long sekToReset, t, tInsek;
 		tInsek = t / 1000;
 		sekToReset = (resetTimeAlarmLock - t) / 1000;
-		Serial << "Time to Reset: " + sekToReset;
+		Serial << "waiting to Reset: " + sekToReset;
 		
+		}//Serial count down
+		else
+		{
 		//checkAlarmLockResetTimer();
+		activateAlarmLockOutput(false);
+		Serial << "Reset now: ";
+		}
 	}
 
 
@@ -326,17 +306,17 @@ void loop() {
 
 
 
-bool setOutputPinStatus(byte outPutpinNo, byte pinStatus = HIGH)
-{
-	if (pinStatus)
-	{
-		digitalWrite(outPutpinNo, HIGH);
-	}
-	else
-	{
-		digitalWrite(outPutpinNo,LOW);
-	}
-}
+//bool setOutputPinStatus(byte outPutpinNo, byte pinStatus = HIGH)
+//{
+//	if (pinStatus)
+//	{
+//		digitalWrite(outPutpinNo, HIGH);
+//	}
+//	else
+//	{
+//		digitalWrite(outPutpinNo,LOW);
+//	}
+//}
 
 
 /*Activates alarm output pin to provided state for provided period or
@@ -344,13 +324,18 @@ disable directly*/
 bool activateAlarmLockOutput(int outPinNumber, long resetDeleay = -1, bool pinState = HIGH)
 {
 	//Set output pin state
-	setOutputPinStatus(outPinNumber, pinState);
+	digitalWrite(outPinNumber, pinState);
 	
 	//Set counter when active period is reseted
 	long currentTime = millis();
 	resetTimeAlarmLock = currentTime + resetDeleay;
 
 
+}
+
+bool activateAlarmLockOutput(bool doReset)
+{
+	resetTimeAlarmLock = false;
 }
 
 //Checks time if all user input and incorrect attempts will be reseted and

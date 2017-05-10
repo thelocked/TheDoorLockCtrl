@@ -30,10 +30,22 @@
     <ClInclude Include="__vm\.TheDoorLockCtrl.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="inputs_old.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inputs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="PinCode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="inputs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="board.txt" />
   </ItemGroup>
 </Project>
