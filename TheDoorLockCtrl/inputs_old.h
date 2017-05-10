@@ -12,55 +12,53 @@
 #include "OnewireKeypad.h"
 
 
-static int LastKeyPadstate;
-static long releaseDetected;
+int lastKPState = WAITING;
+long releaseDetected = 0;
 
-bool CheckingTest(bool b)
+//Declare input keypad object
+//OnewireKeypad <Print, 12> KeyPadInput;
+
+
+char checkKeypadInput()
 {
-	return b;
-}
+	//Begin Keypad Checked for input states and read input.
+	char inputFound = 0;
+	int kpState = inputKeypad.Key_State();
 
 
-
-char CheckingKeypadInput(int kpState,char kpPressedKey)
-{
-	static long relTime;
-	
-
-	char userInputFound = 0;
-	///*Begin Keypad Checked for input states and read input.*/
-	
 	////Checks if keypad state has changed or not compared to last detected state
 	////Only if new state is detected read from keypad
+	if (kpState = RELEASED) //keyPadState = NO_KEY
 	{
-		if (kpState = RELEASED) //keyPadState = NO_KEY
+		//Detected No keys on keypad are pressed.
+		//To help ensure correct user input so must keypad have been released and no input
+		//detect for period from keypad
+		if (releaseDetected < 0)
 		{
-			//Detected No keys on keypad are pressed.
-			//To help ensure correct user input so must keypad have been released and no input
-			//detect for period from keypad
-			//set timer for how long no keys are pressed
 			releaseDetected = millis();
 		}
-		else if (kpState = PRESSED)
+		//set timer for how long no keys are pressed
+	}
+	else if (kpState = PRESSED)
+	{
+
+		//Check if keypad has been released period is enough for read new key press
+		if (releaseDetected + pauseForNextKeyPress < millis())
 		{
-		
-			//Check if keypad has been released period is enough for read new key press
-			if (releaseDetected + pauseForNextKeyPress < millis())
-			{
-				//keypad released period is enough for reading new key press
-				userInput = KeyPad.Getkey();
-				Serial << "Pressed Key: " << userInput << "\n";
+			//keypad released period is enough for reading new key press
+			inputFound =  inputKeypad.Getkey();
+			//Disable relesedCheck Timer
+			releaseDetected = 0;
 
-			}
-	
+
 		}
+
+
+	}
 		//Update last keypad state with New keypad state 
-		lastKpState = kpState;
-	//}
-
-
+		lastKPState = kpState;
 	/*End of keypad check*/
-	return userInputFound;
+	return inputFound;
 }
 #endif
 

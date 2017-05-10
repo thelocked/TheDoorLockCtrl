@@ -49,8 +49,7 @@ Hur systemet används:
  
 
 
-#include "inputs.h"
-#include "inputHandle.h"
+
 #include "PinCode.h"
 #include "OnewireKeypad.h" //For info: http://playground.arduino.cc/Code/OneWireKeyPad
 
@@ -80,7 +79,6 @@ Hur systemet används:
 #define ALARM_PIN 8 //Pin output for triggering alarm.
 
 
-PinCode lockAccessPin = PinCode(PINCODE,failedAttemptsTriggerAlarm,userInputResetDelay); //Provide pincode for door access
 
 //** Keypad hardware setup and layout Settings
 #define keypadRows 4
@@ -101,19 +99,19 @@ char keyPadKeysLayout[] = {
 	'*','0','#'
 };
 
+
 String keyPadKEYS = keyPadKeysLayout; //Keypad layout converted to string for later use
 
 String keyPadKeysAsString = keyPadKEYS;
 //Object that gets input from keypad
-OnewireKeypad <Print, 12> KeyPadforInput(Serial, keyPadKeysLayout, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
 
 long LastkeyPressedTime = 0; //last input from user if not reseted..
 //long doorLockOpenTime = 0; //is access or when was the lock opened.
 //long alarmTriggerTime = 0; //is or when was the alarm triggerd.
 long resetTimeAlarmLock = 0;//Start time for lock or alarm output enabed.
 
-byte lastKpState = WAITING;
-char timeLastKeyPress = 0;
+//byte lastKpState = WAITING;
+//char timeLastKeyPress = 0;
 //char lastPinInput;
 String pincodeInput = ""; //Stores input from keyPad by user.
 
@@ -128,7 +126,18 @@ long countDownOutput = 0; //For the serial output count down of Lock/Alarm Reset
 long lockStatusEnabledtimer = 0;//Value sets if lock status vill be enabled.
 
 
+PinCode lockAccessPin = PinCode(PINCODE,failedAttemptsTriggerAlarm,userInputResetDelay); //Provide pincode for door access
 
+//OnewireKeypad <Print, 12> KeyPadInput(Serial, keyPadKeysLayout, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
+
+OnewireKeypad <Print, 12> inputKeypad = OnewireKeypad <Print, 12>(Serial, keyPadKeysLayout, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
+
+//DON'T Move or change the .h files below
+ #include"inputs_old.h"
+
+/*End of initial declarations and globals*/
+//Create KeypadInput object for reading harware
+//((OnewireKeypad <Print, 12> KeyPadInput = OnewireKeypad <Print, 12>(Serial, keyPadKeysLayout, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
 // the setup function runs once when you press reset or power the board
 void setup() {
 	
@@ -161,12 +170,11 @@ void setup() {
 
 // the loop function runs over and over again until power down or reset
 void loop() {
-#if _VM_DEBUG
-#pragma GCC optimize ("O0")
-#endif
+//#if _VM_DEBUG
+//#pragma GCC optimize ("O0")
+//#endif
 	char userInputFound = 0; //Stores value read from userinput
 
-	CheckingTest(true);
 	/*Check if any userinput is provided or input session should be reset
 	NOTE: Does nothing to alarm or door outputs.*/
 	if (checkUserSessionResetTimer())
@@ -180,20 +188,28 @@ void loop() {
 	///*ALLT DETTA SOM GÄLLER FUNKTIONALLITETEN FÖR AVLÄSNING AV KEYPAD ÄR FÖRTILLFÄLLET BORKOMMENTERAT
 	//efter som jag hittils inte har en aning om detta funkar eller inte
 
-	KeyPadforInput.Key_State();
-	CheckingKeypadInput(&KeyPadforInput);
-	//int currentState = 
-	//if (KeyPad. != lastKpState) {
+	//Begin checking keypad for userInput
+	int currentKPState = inputKeypad.Key_State();
+	//Only try to read if kp state change is detected since last check 
+	
+	if (currentKPState != lastKPState)
+	{
 
-	//	userInputFound = CheckingKeypad(userInputFound);
-	//}
+		userInputFound = checkKeypadInput();
+		//Sent output to Serial if keypress deteced
+		if (userInputFound > 0)
+		{
+			Serial << "Pressed Key: " << userInputFound << " \n";
+		}
+	}
+	/*End of keypad input checking*/
 
 	/*Check serial for user input
 	This enables input from serial connection for test and debug
 	Note this can be commented out or removed*/
 
 	//while(Serial.read() != -1);  //clears data in the PC Serial Port
-
+	char userInput;
 	char serialInput = Serial.read(); //Trying to read and store from serial input;
 	if ((serialInput > 1) && (serialInput < 255))
 	{
@@ -381,9 +397,9 @@ void userInputCommit()
 	if (pinCheckStatus == SUCCSESS)
 	{
 
-			activateAlarmLockOutput(DOOR_LOCK_PIN,doorAccessEnabledPeriod);
-			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
-			Serial << "Correct pin has been provided and Door lock will be disabled\n";
+		activateAlarmLockOutput(DOOR_LOCK_PIN, doorAccessEnabledPeriod);
+		inputSessionResetTime = 0;//This will trigger a new session and reset current input.
+		Serial << "Correct pin has been provided and Door lock will be disabled\n";
 
 	}
 	else if (pinCheckStatus == FAIL)
@@ -399,10 +415,10 @@ void userInputCommit()
 			//digitalWrite(ALARM_PIN, HIGH);//Enables Alarm device by turning output high
 			////statusLedEnable(true);//Turn status led on.
 			//long currentTime = millis();
-			
+
 			//Ativate Alarm OUTPUT!!
 			activateAlarmLockOutput(ALARM_PIN, alarmTriggeredPeriod);
-			
+
 			//resetTimeAlarmLock = currentTime + doorAccessEnabledPeriod;//Set reset time for output enable period
 			inputSessionResetTime = 0;//This will trigger a new session and reset current input.
 			Serial << "Alarm is activated\n";			//User has provided to many failed attempts
@@ -412,7 +428,7 @@ void userInputCommit()
 		}
 		else
 		{
-			
+
 			//The user have not reached max failed attempts
 			Serial << "Number of incorrect attempts: " << userIncorrectCount << " of max " << failedAttemptsTriggerAlarm << "\n";
 
@@ -423,10 +439,11 @@ void userInputCommit()
 		//Returned val from pin check is IGNORE
 		Serial << "This user commit is ignored\n";
 	}
-
-
-
 }
+
+
+
+
 //	long currentTime;
 //		currentTime = millis();
 //	 if (resetTimeAlarmLock < currentTime)
