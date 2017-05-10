@@ -8,21 +8,25 @@
 #else
 	#include "WProgram.h"
 #endif
-#include"OnewireKeypad.h"
 
-class InputsClass
-{
- protected:
+#if _VM_DEBUG
+#pragma GCC optimize ("O0")
+#endif
 
 
- public:
-	void init();
-	int LastAddNew(int newState);
-private:
-	static int _lastState;
-};
-
-extern InputsClass Inputs;
+//class InputsClass
+//{
+// protected:
+//
+//
+// public:
+//	void init();
+//	int LastAddNew(int newState);
+//private:
+//	static int _lastState;
+//};
+//
+//extern InputsClass Inputs;
 
 #endif
 

@@ -60,5 +60,6 @@ extern "C" void __cxa_pure_virtual() {;}
 #undef cli
 #define cli()
 #include "TheDoorLockCtrl.ino"
+#include "inputs.ino"
 #endif
 #endif
