@@ -126,14 +126,15 @@ long countDownOutput = 0; //For the serial output count down of Lock/Alarm Reset
 long lockStatusEnabledtimer = 0;//Value sets if lock status vill be enabled.
 
 
-PinCode lockAccessPin = PinCode(PINCODE,failedAttemptsTriggerAlarm,userInputResetDelay); //Provide pincode for door access
+//PinCode inputPincode = PinCode(PINCODE,failedAttemptsTriggerAlarm); //Provide pincode for door access
 
 //OnewireKeypad <Print, 12> KeyPadInput(Serial, keyPadKeysLayout, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
 
 OnewireKeypad <Print, 12> inputKeypad = OnewireKeypad <Print, 12>(Serial, keyPadKeysLayout, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
 
 //DON'T Move or change the .h files below
- #include"inputs_old.h"
+// #include"inputs_old.h"
+#include"inputs.h"
 
 /*End of initial declarations and globals*/
 //Create KeypadInput object for reading harware
@@ -175,15 +176,18 @@ void loop() {
 //#endif
 	char userInputFound = 0; //Stores value read from userinput
 
+	//resetInputSession();
+
+	
 	/*Check if any userinput is provided or input session should be reset
 	NOTE: Does nothing to alarm or door outputs.*/
-	if (checkUserSessionResetTimer())
-	{
-		//Reset timer has triggerd new user session
-		Serial << "Keypad input session is Reset.\n";
-		//Print instructions to serial window
-		Serial << "\nEnable door access by enter correct pin code and confirm with '#' or reset with '*'\n";
-	}
+	//if (checkUserSessionResetTimer())
+	//{
+	//	//Reset timer has triggerd new user session
+	//	Serial << "Keypad input session is Reset.\n";
+	//	//Print instructions to serial window
+	//	Serial << "\nEnable door access by enter correct pin code and confirm with '#' or reset with '*'\n";
+	//}
 
 	///*ALLT DETTA SOM GÄLLER FUNKTIONALLITETEN FÖR AVLÄSNING AV KEYPAD ÄR FÖRTILLFÄLLET BORKOMMENTERAT
 	//efter som jag hittils inte har en aning om detta funkar eller inte
@@ -207,10 +211,16 @@ void loop() {
 	/*Check serial for user input
 	This enables input from serial connection for test and debug
 	Note this can be commented out or removed*/
+	if (Serial.available()>= 0)
+	{
+		userInputFound = checkSerialInput();
+	}
 
+	/*oLDE SERIAL cHECK
 	//while(Serial.read() != -1);  //clears data in the PC Serial Port
 	char userInput;
 	char serialInput = Serial.read(); //Trying to read and store from serial input;
+	
 	if ((serialInput > 1) && (serialInput < 255))
 	{
 		//Run through a bunch of chars that if detected they should be silently ignored
@@ -257,41 +267,49 @@ void loop() {
 
 
 	}
-
+	*/
 	/*End of serial input check*/
 
 	//Verify if any new user input have been provided
-
-	if (userInput > 0)
-	{
-		//New input found provided from user
-		switch (userInput)
-		{
-			//User whants to reset current pin sequnce.Note Not the number of faild attemts
-		case USERINPUT_RESET_KEY: lockAccessPin.resetAddedInput();
-			//Output to serial com window
-			Serial << "Current pin sequence Reset by user\n";
-			break;
-			//User whants to commit current key sequence and it vill be verifed
-		case USERINPUT_COMMIT_KEY: userInputCommit(); break;
-			//Input provider by user is added to pincode sequence and result of it all is returned
-		default: String allUserInput = lockAccessPin.addInput(userInput);
-			//Prints to serial to indikate pin sequence lenght, 
-
-			//Of course do we have to discuse it before printing it out
-			//Note: Uneccesary functionality just implemented for "Show off :)"
-			String allUserInputDisquised;
-			for (byte i = 0; i < allUserInput.length(); i++)
-			{
-				//Not a great way to Fill with '*' for each char, but who cares
-				allUserInputDisquised += "*";
-			}
-
-			Serial << "Current user pin: ";
-			Serial.println(allUserInputDisquised);
-		}
-
+	//and take actions if input larger than 0
+	if (userInputFound < 1)
+	{	
+		//No userInput found
 	}
+	else if (userInputFound == USERINPUT_COMMIT_KEY)
+	{
+		//User provided commit pinInput and pincode from user input
+		//will be evaluated to lockPin
+	}
+		
+		//New input found provided from user
+		//switch (userInputFound)
+		//{
+		//	//User whants to reset current pin sequnce.Note Not the number of faild attemts
+		//case USERINPUT_RESET_KEY: lockAccessPin.resetAddedInput();
+		//	//Output to serial com window
+		//	Serial << "Current pin sequence Reset by user\n";
+		//	break;
+		//	//User whants to commit current key sequence and it vill be verifed
+		//case USERINPUT_COMMIT_KEY: userInputCommit(); break;
+		//	//Input provider by user is added to pincode sequence and result of it all is returned
+		//default: String allUserInput = lockAccessPin.addInput(userInputFound);
+		//	//Prints to serial to indikate pin sequence lenght, 
+
+		//	//Of course do we have to discuse it before printing it out
+		//	//Note: Uneccesary functionality just implemented for "Show off :)"
+		//	String allUserInputDisquised;
+		//	for (byte i = 0; i < allUserInput.length(); i++)
+		//	{
+		//		//Not a great way to Fill with '*' for each char, but who cares
+		//		allUserInputDisquised += "*";
+		//	}
+
+		//	Serial << "Current user pin: ";
+		//	Serial.println(allUserInputDisquised);
+		//}
+
+	
 
 	//Check if output reset timer is passed.
 	//Check if this function should be skipped or not
@@ -361,7 +379,7 @@ bool checkUserSessionResetTimer()
 	if (inputSessionResetTime < millis())
 	{
 		//Last Session Time is passed and system will reset all input.
-		lockAccessPin.resetAddedInput();//Resets added input in pin sequence from last session
+		//inputPincode.resetAddedInput();//Resets added input in pin sequence from last session
 		userIncorrectCount = 0;//Resets counter for previus faled input attemps
 		inputSessionResetTime = userInputResetDelay + millis();//Set start time for new session
 		//Try to flush all reaming input from serial
@@ -389,6 +407,8 @@ bool checkUserSessionResetTimer()
 //
 //Called when user sends commit command and evaluates pin code and
 //provide response depending on result
+
+/*
 void userInputCommit()
 {
 	Serial << "user committed current input and pin code evaluation is performed\n";
@@ -440,6 +460,7 @@ void userInputCommit()
 		Serial << "This user commit is ignored\n";
 	}
 }
+*/
 
 
 

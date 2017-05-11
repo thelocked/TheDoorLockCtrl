@@ -13,6 +13,21 @@
 #pragma GCC optimize ("O0")
 #endif
 
+long resetSessionTime = 0;
+
+int lastKPState = WAITING;
+long releaseDetected = 0;
+
+//bool checkInputSessionRestartTimer();
+
+char checkSerialInput();
+
+char checkKeypadInput();
+
+int userPincommitCheck();
+
+void resetInputSession();
+
 
 //class InputsClass
 //{

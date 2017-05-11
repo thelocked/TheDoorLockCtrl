@@ -6,12 +6,13 @@
 
 
 
-PinCode::PinCode(char * pincode,
-	int numOfRetrties = 0, //Default unlimited retries
-	long inputResetDelay = 0) //Default session never resets
+PinCode::PinCode(char * pincode,int numOfRetrties = 0) //Default session never resets
 {
 	correctPin = pincode;
+	maxFailnum = numOfRetrties;
 }
+
+
 
 //Append char to user input sequence and returns current pin sequence
 String PinCode::addInput(char addInput)
@@ -33,9 +34,15 @@ void PinCode::resetAddedInput()
 	userInput = "";
 }
 
-//void PinCode::resetAll()
-//{
-//}
+
+
+void PinCode::resetAllInput()
+{
+	userInput = "";
+	countFailed = 0;
+}
+
+
 
 
 
@@ -46,19 +53,35 @@ int PinCode::checkPin()
 	if (userInput == correctPin)
 	{
 		//Input is matched with pin
-		return SUCCSESS;
+		//resetAllInput();
+		return PIN_CORRECT;
+	}
+	else
+	{
+		countFailed = (countFailed+1);
+		//Check failed Attempts counter
+		if (countFailed < maxFailnum)
+		{
+			//Returns num of retries left for correctPin
+			return(maxFailnum - countFailed);
+		}
+		else
+		{
+			//Last retry FAILED
+			return(PIN_TO_MANY_FAIL);
+		}
 	}
 	
 
-	int lengthOfUserInput = userInput.length();
-	//Check if user input have correct length
-	if (lengthOfUserInput == 0)
-	{
-		//User have not provided any input to evaluate.
-		return IGNORED;
-	}
+	//int lengthOfUserInput = userInput.length();
+	////Check if user input have correct length
+	//if (lengthOfUserInput == 0)
+	//{
+	//	//User have not provided any input to evaluate.
+	//	return;
+	//}
 
-	return FAIL;
+	//return PIN_TO_MANY_FAIL;
 
 
 	//else if (lengthOfUserInput == correctPin.length())

@@ -9,10 +9,11 @@
 	#include "WProgram.h"
 #endif
 
-#define SUCCSESS 1
-#define FAIL -1
+#define PIN_CORRECT 0
+#define PIN_TO_MANY_FAIL -1
+
 //#define TO_MANY_FAIL -1
-#define IGNORED 0
+//#define IGNORED 0
 /*
 Used for user input, verification against the correct pin,
 counting number of incorrect inputs and if to many return that.
@@ -24,23 +25,27 @@ class PinCode
 {
 
  public:
-	 PinCode(char* pincode, //The Correct pin
-		 int numOfRetrties,
-		 long inputResetDelay);
+	
+		
 
-	 String addInput(char addInput);
+		 PinCode(char * pincode, int numOfRetrties);
+
+		 String addInput(char addInput);
 	 int checkPin();
 
 	 void resetAddedInput();
-	 void resetAll();
+	 void resetAllInput();
 	 
 
 	 
 private:
+	byte maxFailnum;
+
 	String userInput;
 	String correctPin;
 
 	long inputSessionStart;
+    int countFailed = 0;
 
 
 
