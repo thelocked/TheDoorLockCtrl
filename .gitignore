@@ -3,9 +3,9 @@
 
 #Only show Arduino specific files
 *.sln
-*.vxproj
-*vxproj.*
-_vm/
+*.vcxproj
+*.vcxproj.*
+_vm
 
 
 # User-specific files
