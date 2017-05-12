@@ -26,7 +26,7 @@ char checkKeypadInput();
 
 int userPincommitCheck();
 
-void resetInputSession();
+bool inputSessionResetCheck();
 
 
 //class InputsClass

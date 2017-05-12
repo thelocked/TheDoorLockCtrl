@@ -161,20 +161,37 @@ int userPincommitCheck()
 */
 }
 
-void resetInputSession()
+bool inputSessionResetCheck()
 {
 	//Check timer if reset enable time is passed
 	long t = millis();
-	if (resetSessionTime < t)
+	if ((resetSessionTime < t) || (resetSessionTime = 0))
 	{
 		//Set new reset trigger period
-		resetSessionTime = t;
-		
-		
+		resetSessionTime = t + userInputResetDelay;
+		//
+		inputPincode.resetAllInput();
 		//Input states init
-		
+		//Set Keypad to default state
+		releaseDetected = 0;
+		lastKPState = WAITING;
 
+		//If any Serial input remaining read input until input buffer empty
+		//while (Serial.available() >= 0)
+		//{
+		//	//When data from serial byte by byte
+		//	Serial.read();
+		//}
+		return true;
 	}
+	else
+	{
+		//No reset done
+		return false;
+	}
+
+
+	
 
 		//Last Session Time is passed and system will reset all input.
 		//lockAccessPin.resetAddedInput();//Resets added input in pin sequence from last session

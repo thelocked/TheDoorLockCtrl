@@ -126,7 +126,7 @@ long countDownOutput = 0; //For the serial output count down of Lock/Alarm Reset
 long lockStatusEnabledtimer = 0;//Value sets if lock status vill be enabled.
 
 
-//PinCode inputPincode = PinCode(PINCODE,failedAttemptsTriggerAlarm); //Provide pincode for door access
+PinCode inputPincode = PinCode(PINCODE,failedAttemptsTriggerAlarm); //Provide pincode for door access
 
 //OnewireKeypad <Print, 12> KeyPadInput(Serial, keyPadKeysLayout, keypadRows, keypadCols, KEYPAD_PIN, keypadRow_Res, keypadCol_Res, Precision);
 
@@ -176,21 +176,18 @@ void loop() {
 //#endif
 	char userInputFound = 0; //Stores value read from userinput
 
-	//resetInputSession();
-
+	//Check if any userinput is provided or input session should be reset
+	if (inputSessionResetCheck())
+	{
+		//Reset is performed. 
+		//Display welcome msg to Serial out.
+		Serial << "Input session is Reset.\n";
+		//Print instructions to serial window
+		Serial << "\nEnable door access by enter correct pin code and confirm with '#' or reset with '*'\n";
+	}
 	
-	/*Check if any userinput is provided or input session should be reset
-	NOTE: Does nothing to alarm or door outputs.*/
-	//if (checkUserSessionResetTimer())
-	//{
-	//	//Reset timer has triggerd new user session
-	//	Serial << "Keypad input session is Reset.\n";
-	//	//Print instructions to serial window
-	//	Serial << "\nEnable door access by enter correct pin code and confirm with '#' or reset with '*'\n";
-	//}
 
-	///*ALLT DETTA SOM GÄLLER FUNKTIONALLITETEN FÖR AVLÄSNING AV KEYPAD ÄR FÖRTILLFÄLLET BORKOMMENTERAT
-	//efter som jag hittils inte har en aning om detta funkar eller inte
+
 
 	//Begin checking keypad for userInput
 	int currentKPState = inputKeypad.Key_State();
@@ -208,103 +205,41 @@ void loop() {
 	}
 	/*End of keypad input checking*/
 
-	/*Check serial for user input
-	This enables input from serial connection for test and debug
-	Note this can be commented out or removed*/
-	if (Serial.available()>= 0)
+	//Check serial input for user input
+	if (Serial.available() >= 0)
 	{
 		userInputFound = checkSerialInput();
 	}
-
-	/*oLDE SERIAL cHECK
-	//while(Serial.read() != -1);  //clears data in the PC Serial Port
-	char userInput;
-	char serialInput = Serial.read(); //Trying to read and store from serial input;
-	
-	if ((serialInput > 1) && (serialInput < 255))
-	{
-		//Run through a bunch of chars that if detected they should be silently ignored
-		//and not turn up as provided user input
-		switch (serialInput)
-		{
-		case 0:
-		case 255:
-		case '\n': //new line;
-			//this is just rushed through with no break statements. Because if anything is matched same result is provided
-			serialInput = 0;
-			break;
-		default:
-			break;
-		}
-
-		//userInput = Serial.read();//get one char from serial.
-		//Check if value matches anything compared to chars provided by keypad
-		//Note this is needed to filter out junk and bogus values from serial input
-		if (serialInput > 0)  //Run this only when input is provided 
-		{
-			int ifFoundIndexNo = keyPadKEYS.indexOf(serialInput); //Search for chars that if found in keypad layout.
-			//if (!keyPadKEYS.indexOf(userInput))
-			if (ifFoundIndexNo >= 0)
-			{
-				//userInput match with keypad is found
-				userInput = serialInput; //Update user input with serial find,
-				Serial << "Serial input found:  in Dec: ";
-				Serial.print(userInput, DEC);
-				Serial << " " << userInput << "\n";
-			}
-			else
-			{
-				//No match found reset value back to nothing
-				Serial << "Found Serial input not matched by keypad: '" << userInput << " in Dec: ";
-				Serial.println(userInput, DEC);
-				userInput = 0;
-			}
-
-		}
-
-
-
-
-
-	}
-	*/
 	/*End of serial input check*/
 
 	//Verify if any new user input have been provided
 	//and take actions if input larger than 0
-	if (userInputFound < 1)
-	{	
-		//No userInput found
-	}
-	else if (userInputFound == USERINPUT_COMMIT_KEY)
+	//User whants to reset current pin sequnce.Note Not the number of faild attemts
+	switch (userInputFound)
 	{
-		//User provided commit pinInput and pincode from user input
-		//will be evaluated to lockPin
+	case  0:
+		//No new input found
+		break;
+	case USERINPUT_RESET_KEY: inputPincode.resetAddedInput();
+			//Output to serial com window
+			Serial << "Current pin sequence Reset by user\n";
+			break;
+			//User whants to commit current key sequence and it vill be verifed
+		case USERINPUT_COMMIT_KEY: userInputCommit(); break;
+			//Input provider by user is added to pincode sequence and result of it all is returned
+		default: String allUserInput = lockAccessPin.addInput(userInputFound);
+			//Prints to serial to indikate pin sequence lenght, 
+
+			//Of course do we have to discuse it before printing it out
+			//Note: Uneccesary functionality just implemented for "Show off :)"
+			String allUserInputDisquised;
+			for (byte i = 0; i < allUserInput.length(); i++)
+			{
+				//Not a great way to Fill with '*' for each char, but who cares
+				allUserInputDisquised += "*";
+			}
+
 	}
-		
-		//New input found provided from user
-		//switch (userInputFound)
-		//{
-		//	//User whants to reset current pin sequnce.Note Not the number of faild attemts
-		//case USERINPUT_RESET_KEY: lockAccessPin.resetAddedInput();
-		//	//Output to serial com window
-		//	Serial << "Current pin sequence Reset by user\n";
-		//	break;
-		//	//User whants to commit current key sequence and it vill be verifed
-		//case USERINPUT_COMMIT_KEY: userInputCommit(); break;
-		//	//Input provider by user is added to pincode sequence and result of it all is returned
-		//default: String allUserInput = lockAccessPin.addInput(userInputFound);
-		//	//Prints to serial to indikate pin sequence lenght, 
-
-		//	//Of course do we have to discuse it before printing it out
-		//	//Note: Uneccesary functionality just implemented for "Show off :)"
-		//	String allUserInputDisquised;
-		//	for (byte i = 0; i < allUserInput.length(); i++)
-		//	{
-		//		//Not a great way to Fill with '*' for each char, but who cares
-		//		allUserInputDisquised += "*";
-		//	}
-
 		//	Serial << "Current user pin: ";
 		//	Serial.println(allUserInputDisquised);
 		//}
